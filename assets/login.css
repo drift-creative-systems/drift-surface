@@ -1,0 +1,55 @@
+/**
+ * login.css — default Drift login screen (wp-login.php).
+ *
+ * Enqueued by Drift_Website_White_Label::login_styles() after core's `login`
+ * stylesheet. Per-site White Label settings are added inline after this
+ * file, so anything picked on Drift → White Label wins.
+ */
+
+/* Page: black stage with a soft pink spotlight from above. */
+body.login {
+	min-width: 0;
+	background: #000 radial-gradient(ellipse 80% 55% at 50% -10%, rgba(238, 67, 103, 0.28), transparent 70%) no-repeat;
+}
+
+/* One white card holding the logo, the form and the links. */
+.login #login {
+	position: relative;
+	width: 320px;
+	max-width: calc(100% - 32px - 74px);
+	margin: 7vh auto 24px;
+	padding: 32px 36px 26px;
+	border-radius: 14px;
+	background: #fff;
+	box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+	color: #2c3338;
+}
+
+/* Default logo: the site name, set in type, until a logo is uploaded. */
+.login h1 a {
+	margin: 0 auto 20px;
+}
+
+body.login form {
+	margin-top: 0;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	box-shadow: none;
+}
+
+.login form .input:focus,
+.login input[type="text"]:focus,
+.login input[type="password"]:focus {
+	border-color: #ee4367;
+	box-shadow: 0 0 0 1px #ee4367;
+}
+
+.login #nav,
+.login #backtoblog {
+	padding: 0;
+}
+
+.login #backtoblog {
+	margin-bottom: 0;
+}

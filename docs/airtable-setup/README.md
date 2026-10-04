@@ -27,8 +27,18 @@ Copy the token. It's shown once.
 Open a terminal in this folder (`drift-website/docs/airtable-setup`) and run:
 
 ```bash
-node setup-encore-base.mjs --base appXXXXXXXXXXXXXX --token patXXXX…
+# macOS / Linux / Git Bash
+export AIRTABLE_TOKEN="<your setup token>"
+node setup-encore-base.mjs --base appXXXXXXXXXXXXXX
 ```
+
+```powershell
+# Windows PowerShell
+$env:AIRTABLE_TOKEN = "<your setup token>"
+node setup-encore-base.mjs --base appXXXXXXXXXXXXXX
+```
+
+The token is read from `AIRTABLE_TOKEN` so it never lands in shell history or in docs. (`--token` still works, but avoid it.)
 
 Add `--demo velvet` (indie four-piece) or `--demo hollin` (solo folk) to fill it with a demo band, including placeholder images. Add `--dry-run` to see what it would do without changing anything.
 

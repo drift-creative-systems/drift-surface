@@ -6,7 +6,10 @@
  * docs/ENCORE-AIRTABLE-BASE.md) into an EMPTY base you've already created,
  * and optionally fills it with a demo band.
  *
- *   node setup-encore-base.mjs --base appXXXXXXXXXXXXXX --token patXXXX… [--demo velvet|hollin] [--dry-run]
+ *   AIRTABLE_TOKEN=<setup token> node setup-encore-base.mjs --base appXXXXXXXXXXXXXX [--demo velvet|hollin] [--dry-run]
+ *
+ * (--token also works, but the environment variable keeps the token out of
+ * shell history.)
  *
  * Token: create at airtable.com/create/tokens with access to that ONE base and
  * scopes schema.bases:read, schema.bases:write, data.records:read,
@@ -38,7 +41,7 @@ const DEMO = args.demo || '';
 const DRY = !!args['dry-run'];
 
 if (!BASE || !/^app[A-Za-z0-9]{14}$/.test(BASE) || !TOKEN) {
-	console.error('Usage: node setup-encore-base.mjs --base appXXXXXXXXXXXXXX --token pat… [--demo velvet|hollin] [--dry-run]');
+	console.error('Usage: AIRTABLE_TOKEN=<setup token> node setup-encore-base.mjs --base appXXXXXXXXXXXXXX [--demo velvet|hollin] [--dry-run]');
 	process.exit(1);
 }
 if (DEMO && !['velvet', 'hollin'].includes(DEMO)) {

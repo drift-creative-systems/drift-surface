@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+- Airtable setup docs now pass the setup token through the `AIRTABLE_TOKEN` environment variable instead of a command-line option. This keeps the token out of shell history and stops secret scanners flagging the placeholder.
+
 ## [1.1.0] - 2026-10-04
 
 ### Added

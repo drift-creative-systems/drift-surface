@@ -83,9 +83,18 @@ final class Drift_Website_Map {
 				'pages'              => [],
 				'page_builder_field' => 'page_builder',
 				'publish'            => [],
+				'theme'              => null,
 			],
 			$map
 		);
+
+		if ( is_array( $map['theme'] ) ) {
+			$map['theme'] = array_merge( [ 'slug' => '', 'name' => '', 'zip' => '' ], $map['theme'] );
+			$map['theme']['slug'] = sanitize_key( (string) $map['theme']['slug'] );
+			$map['theme']['name'] = '' !== $map['theme']['name'] ? (string) $map['theme']['name'] : $map['theme']['slug'];
+		} else {
+			$map['theme'] = null;
+		}
 
 		if ( is_array( $map['settings'] ) ) {
 			$map['settings'] = array_merge( [ 'table' => '', 'option' => 'drift_site_settings', 'fields' => [] ], $map['settings'] );

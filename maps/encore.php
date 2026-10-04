@@ -29,6 +29,18 @@ return [
 	 */
 	'publish'            => [ 'field' => 'Last Published' ],
 
+	/*
+	 * The theme Encore renders with. Until it (or a child of it) is active,
+	 * Drift shows an install/activate notice and the Setup Wizard is off.
+	 * The theme refuses to render without this plugin, so the two always
+	 * ship together.
+	 */
+	'theme'              => [
+		'slug' => 'encore-theme',
+		'name' => 'Encore',
+		'zip'  => 'https://github.com/drift-creative-systems/encore-theme/releases/latest/download/encore-theme.zip',
+	],
+
 	/* ── One-row table → drift_setting( key ) ───────────────────────── */
 	'settings'           => [
 		'table'  => 'Site Settings',

@@ -667,6 +667,11 @@ final class Drift_Website_Admin_Page {
 			return;
 		}
 
+		if ( ! Drift_Website_Theme_Check::satisfied() ) {
+			echo '<section class="drift-card"><p>' . esc_html( Drift_Website_Theme_Check::blocked_message() ) . '</p></section>';
+			return;
+		}
+
 		if ( ! function_exists( 'update_field' ) ) {
 			echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'ACF Pro isn\'t active — pages will be created without their modules.', 'drift-website' ) . '</p></div>';
 		}

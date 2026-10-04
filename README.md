@@ -7,6 +7,7 @@ The first product is **Encore** (band and artist sites). Each product is a map f
 - **Requires:** WordPress 6.2+, PHP 8.0+, OpenSSL. ACF Pro is needed for the Setup Wizard's modules.
 - **Repo:** https://github.com/drift-creative-systems/drift-website
 - **Self-updates** from GitHub releases (bundled Plugin Update Checker, checked every 6 hours).
+- **Pairs with its product theme.** A map can name its theme (`'theme'` key). For Encore that's the [Encore theme](https://github.com/drift-creative-systems/encore-theme): until it's active, Drift shows an **Install & activate** notice and the Setup Wizard is off. The theme in turn shows a holding page until this plugin is active. `encore-bundle.zip` on each theme release contains both.
 
 ## How it works
 

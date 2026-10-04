@@ -84,6 +84,10 @@ final class Drift_Website_Page_Creator {
 			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'drift-website' ) ], 403 );
 		}
 
+		if ( ! Drift_Website_Theme_Check::satisfied() ) {
+			wp_send_json_error( [ 'message' => Drift_Website_Theme_Check::blocked_message() ], 409 );
+		}
+
 		$page_id = sanitize_key( (string) wp_unslash( $_POST['page_id'] ?? '' ) );
 		if ( '' === $page_id ) {
 			wp_send_json_error( [ 'message' => __( 'Missing page.', 'drift-website' ) ], 400 );

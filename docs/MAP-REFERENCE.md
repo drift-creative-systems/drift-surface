@@ -15,6 +15,7 @@ A product map is a PHP file returning an array, in `maps/{slug}.php` or register
 | `taxonomies` | array | Taxonomies to register |
 | `forms` | array | Website → Airtable forms |
 | `pages` | array | Setup Wizard page definitions |
+| `theme` | `[ 'slug', 'name', 'zip' ]` | Optional. The theme this product renders with. Until it (or a child of it) is active, Drift shows an Install & activate notice (from `zip`) and the Setup Wizard is off |
 
 ## `settings`
 

@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.1.0] - 2026-10-04
+
+### Added
+- Product maps can name their theme (`'theme' => [ 'slug', 'name', 'zip' ]`). `maps/encore.php` names the Encore theme.
+- When the map's theme (or a child of it) isn't active, a persistent admin notice offers **Install & activate** (downloads the latest release from GitHub) or **Activate** if it's already installed. Needs `install_themes` / `switch_themes`, nonce-checked, and falls back to a "upload it manually" message on hosts without direct filesystem access.
+- The Setup Wizard tab and its page-creation AJAX are blocked until the theme is active, because the wizard's pages are built from that theme's modules.
+
 ## [1.0.0] - 2026-10-03
 
 First stable release.

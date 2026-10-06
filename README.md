@@ -66,3 +66,14 @@ define( 'DRIFT_WEBSITE_GITHUB_TOKEN', 'github_pat_…' );         // only if the
 | `docs/ENCORE-AIRTABLE-BASE.md` | The Encore template base, table by table |
 | `docs/airtable-publish-automation.js` | The Publish automation script |
 | `tests/fake-airtable-mu-plugin.php` | Local test fixture faking Airtable (never deploy) |
+
+## Licence
+
+Split licence, © Drift Creative Systems:
+
+- **PHP files:** GPL-2.0-or-later (`GPL-2.0.txt`), because they run inside WordPress.
+- **Everything else** (CSS, JavaScript, media, docs, the Airtable template and its scripts): proprietary, all rights reserved. They can't be copied, modified, redistributed or used in a competing product without written permission.
+- **`lib/plugin-update-checker/`:** MIT, by its author.
+- **Names:** "Drift" and "Encore" are reserved. Modified versions can't be distributed under them.
+
+The full terms are in `LICENSE`.

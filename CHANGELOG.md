@@ -2,9 +2,18 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [1.2.0] - 2026-10-06
+
+### Added
+- `embed` map field type: keeps only `<iframe>` tags with an `https` source and strips scripts, `srcdoc` and surrounding text (`Drift_Website_Media::embed()`).
+- Encore map: Site Settings → **Live Embed** (`live_embed`) and **Merch Embed** (`merch_embed`), both `embed`. The base doc and setup script add the two Long text fields.
+- Sync tolerates fields missing from the base. When Airtable answers 422 `UNKNOWN_FIELD_NAME`, `Drift_Website_Airtable::list_records_lenient()` drops that field and retries (one extra API call per missing field, only while it's missing). The sync keeps the field's current WordPress values and logs which fields were skipped. Before this, one missing field failed the whole table. Fields a table can't sync without (title, slug, status field, order and sort fields, from `Drift_Website_Map::structural_fields()`) are never dropped, so the table still fails safely rather than binning rows. Airtable errors now carry `type` and `message` in their error data.
+- `setup-encore-base.mjs` migrate mode: `--migrate --all` (or `--bases`, `--base`) finds every Encore base the token can see and adds missing tables, fields and links. It never deletes, renames or retypes anything. It stamps `[Encore template vN]` on the Site Settings table description and lists hand jobs per base: formulas, select options, wrong types, Created time and button fields, the Interface. Dry run by default; `--apply` makes the changes. Bases newer than the script, and bases without Creator access, are skipped. `TEMPLATE_VERSION` is 2.
+- `docs/airtable-setup/README.md`: click-by-click steps for adding the embed fields to the Interface's Publish page; Part C, updating existing bases with migrate mode and a maintenance token; Part D, band-facing instructions for the embeds.
 
 ### Changed
+- Licence: split. PHP stays GPL-2.0-or-later (`GPL-2.0.txt`); everything else (CSS, JS, media, docs, the Airtable template and its scripts) is proprietary to Drift Creative Systems. See `LICENSE`. The Drift and Encore names are reserved.
+- Code comments and changelog no longer name the private projects the plugin was originally built from.
 - Airtable setup docs now pass the setup token through the `AIRTABLE_TOKEN` environment variable instead of a command-line option. This keeps the token out of shell history and stops secret scanners flagging the placeholder.
 
 ## [1.1.0] - 2026-10-04
@@ -40,7 +49,7 @@ First stable release.
 ## [0.1.0] - 2026-10-03
 
 ### Added
-- First release. Map-driven, one-way Airtable → WordPress sync engine, generalised from vision-website's Team sync. Rules carried over: whole-table-or-nothing fetches, Airtable owns only the posts it created, hash change detection, removed rows binned and restored on return, failed images retried.
+- First release. Map-driven, one-way Airtable → WordPress sync engine. Rules: whole-table-or-nothing fetches, Airtable owns only the posts it created, hash change detection, removed rows binned and restored on return, failed images retried.
 - Linked records resolved to WordPress post IDs (`link` field type, `drift_linked_posts()`).
 - Per-run image import cap with automatic continuation from cached records (no extra API calls).
 - Publish webhook (`POST /wp-json/drift/v1/publish`) and status endpoint (`GET /wp-json/drift/v1/status`), secret-protected.
@@ -49,5 +58,5 @@ First stable release.
 - Encrypted credentials (AES-256-GCM) with wp-config overrides.
 - Website → Airtable forms with honeypot, rate limit and email fallback.
 - Encore product map: Site Settings, Gigs, Releases, Tracks, Members, News, Gallery, Videos, Press, Merch, Enquiries and Subscribers, plus 10 Setup Wizard pages.
-- Ported from vision-website: Drift admin shell with tab filter, White Label (Bonsai palette defaults), agency-user menu hiding, and the Setup Wizard (now map-driven, and builds the Main Menu).
+- Drift admin shell with tab filter, White Label (Bonsai palette defaults), agency-user menu hiding, and the Setup Wizard (now map-driven, and builds the Main Menu).
 - Self-updates from GitHub releases at Drift-Apps/drift-website.

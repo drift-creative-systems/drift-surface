@@ -3,18 +3,17 @@
  * Plugin Name:       Drift Website
  * Plugin URI:        https://github.com/drift-creative-systems/drift-website
  * Description:       Airtable-powered site engine for Drift App Suite products (Encore and friends). One-way Airtable → WordPress sync driven by a per-product map, Publish webhook, white label, admin access control and the page setup wizard.
- * Version:           1.1.0
+ * Version:           1.2.0
  * Requires at least: 6.2
  * Requires PHP:      8.0
  * Author:            Drift Creative Systems
  * Author URI:        https://github.com/drift-creative-systems
- * License:           GPL-2.0-or-later
+ * License:           GPL-2.0-or-later (PHP files); proprietary (all other files). See LICENSE.
+ * License URI:       https://github.com/drift-creative-systems/drift-website/blob/main/LICENSE
  * Text Domain:       drift-website
  *
- * Built from Bonsai's own vision-website plugin (sync patterns, white label,
- * admin access, setup wizard). The Airtable connection layer that used to be
- * borrowed from a third-party plugin is rebuilt here from scratch — see
- * CLAUDE.md "Provenance".
+ * Shared engine for every Drift product: Airtable → WordPress sync, forms,
+ * white label, admin access and the setup wizard.
  *
  * @package Drift_Website
  */
@@ -23,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'DRIFT_WEBSITE_VERSION', '1.1.0' );
+define( 'DRIFT_WEBSITE_VERSION', '1.2.0' );
 define( 'DRIFT_WEBSITE_FILE', __FILE__ );
 define( 'DRIFT_WEBSITE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'DRIFT_WEBSITE_URL', plugin_dir_url( __FILE__ ) );

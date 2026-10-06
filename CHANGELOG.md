@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+- White Label default admin footer is "Website by Drift Creative Systems", linking to https://driftcreativesystems.co.uk/. Plugin Author URI points there too. Sites that saved their own footer text keep it.
+
 ## [2.0.0] - 2026-10-06
 
 Renamed from **Drift Website** to **Encore Website**. 1.x sites update in place with no manual steps.

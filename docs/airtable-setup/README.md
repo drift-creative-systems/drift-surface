@@ -210,7 +210,7 @@ Since plugin 1.2.0 the order isn't critical: if a site updates before its base i
 
 A dry run costs 1 call per base the token can see, plus 1 to list them. Applying adds 1 call per field or table created and 1 for the version stamp. These count against each base's own workspace allowance, so a typical update costs a few calls per band.
 
-### When you change the template (for Bonsai developers)
+### When you change the template (for Drift Creative Systems developers)
 
 1. Edit `SCHEMA` in `setup-encore-base.mjs`, and `maps/encore.php` and `docs/ENCORE-AIRTABLE-BASE.md` to match.
 2. Bump `TEMPLATE_VERSION` and add a line to the version history above it.

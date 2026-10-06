@@ -7,7 +7,7 @@
  * Requires at least: 6.2
  * Requires PHP:      8.0
  * Author:            Drift Creative Systems
- * Author URI:        https://github.com/drift-creative-systems
+ * Author URI:        https://driftcreativesystems.co.uk/
  * License:           GPL-2.0-or-later (PHP files); proprietary (all other files). See LICENSE.
  * License URI:       https://github.com/drift-creative-systems/encore-website/blob/main/LICENSE
  * Text Domain:       encore-website

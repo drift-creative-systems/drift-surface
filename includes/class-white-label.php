@@ -58,7 +58,7 @@ class Encore_Website_White_Label {
     }
 
     /**
-     * Encore Website defaults — used for any field left blank. Bonsai palette:
+     * Encore Website defaults — used for any field left blank. Palette:
      * #ee4367 (pink), #e2ecf3 (mist), #000000. Logos come from
      * assets/branding/ if the files exist (see the README there).
      */
@@ -68,8 +68,8 @@ class Encore_Website_White_Label {
             'hide_wp_branding'      => '1',
             'admin_bar_logo'        => self::bundled_asset( 'ew-admin-bar-logo.png' ),
             'admin_bar_logo_url'    => '',
-            'footer_text'           => 'Website by The Bonsai Digital Collective',
-            'footer_url'            => '',
+            'footer_text'           => 'Website by Drift Creative Systems',
+            'footer_url'            => 'https://driftcreativesystems.co.uk/',
 
             // Login screen.
             // ew-login-logo.png at 2× (640 × 230) stays sharp on retina.

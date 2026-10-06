@@ -46,8 +46,8 @@ return [
 		'table'  => 'Site Settings',
 		'option' => 'drift_site_settings',
 		'fields' => [
-			'Artist Name'      => [ 'to' => 'name', 'type' => 'text' ],
-			'Tagline'          => [ 'to' => 'tagline', 'type' => 'text' ],
+			'Artist Name'      => [ 'to' => 'name', 'type' => 'text', 'wp_option' => 'blogname' ],           // Also Settings → General → Site Title.
+			'Tagline'          => [ 'to' => 'tagline', 'type' => 'text', 'wp_option' => 'blogdescription' ], // Also Settings → General → Tagline.
 			'Genre'            => [ 'to' => 'genre', 'type' => 'text' ],
 			'Hometown'         => [ 'to' => 'hometown', 'type' => 'text' ],
 			'Short Bio'        => [ 'to' => 'bio_short', 'type' => 'text' ],

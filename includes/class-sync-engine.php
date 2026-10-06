@@ -48,6 +48,9 @@ final class Drift_Website_Sync_Engine {
 	const HOOK_RUN      = 'drift_website_run_sync';
 	const HOOK_CONTINUE = 'drift_website_continue_sync';
 
+	/** Core options a settings field may mirror via 'wp_option'. Kept short on purpose. */
+	const WP_OPTIONS = [ 'blogname', 'blogdescription' ];
+
 	public static function init(): void {
 		add_action( self::HOOK_RUN, [ __CLASS__, 'cron_run' ] );
 		add_action( self::HOOK_CONTINUE, [ __CLASS__, 'cron_continue' ] );
@@ -358,9 +361,40 @@ final class Drift_Website_Sync_Engine {
 		}
 
 		update_option( $spec['option'], $values, true );
+		self::mirror_wp_options( $spec['fields'], $values, $missing );
 
 		/* translators: %s: table. */
 		return [ 'ok' => true, 'message' => sprintf( __( '%s: updated.', 'drift-website' ), $label ) . self::missing_note( $label, $missing ) ];
+	}
+
+	/**
+	 * Copies settings fields flagged with 'wp_option' into core options
+	 * (e.g. Artist Name → Site Title). Blank or missing fields leave the
+	 * WordPress value alone, so a site never loses its title to an empty cell.
+	 *
+	 * @param array    $fields  Settings field specs from the map.
+	 * @param array    $values  Values just saved to the settings option.
+	 * @param string[] $missing Fields Airtable doesn't have.
+	 */
+	private static function mirror_wp_options( array $fields, array $values, array $missing ): void {
+		foreach ( $fields as $name => $field ) {
+			$option = (string) ( $field['wp_option'] ?? '' );
+			if ( '' === $option || in_array( $name, $missing, true ) ) {
+				continue;
+			}
+			if ( ! in_array( $option, self::WP_OPTIONS, true ) ) {
+				/* translators: 1: field, 2: option name. */
+				Drift_Website_Log::warning( sprintf( __( '%1$s: "%2$s" is not an option Drift may update; skipped.', 'drift-website' ), $name, $option ) );
+				continue;
+			}
+
+			$value = sanitize_text_field( (string) ( $values[ $field['to'] ] ?? '' ) );
+			if ( '' === $value || get_option( $option ) === $value ) {
+				continue;
+			}
+
+			update_option( $option, $value );
+		}
 	}
 
 	/* ── Entity table → posts ────────────────────────────────────────── */

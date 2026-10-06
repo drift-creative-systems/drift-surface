@@ -29,6 +29,15 @@ A product map is a PHP file returning an array, in `maps/{slug}.php` or register
 
 Only the first row is read (`maxRecords=1`, so 1 API call). Image fields store an attachment ID; a pending image keeps the previous one until it lands.
 
+A settings field can also mirror into a core WordPress option with `'wp_option'`:
+
+```php
+'Artist Name' => [ 'to' => 'name', 'type' => 'text', 'wp_option' => 'blogname' ],        // Site Title
+'Tagline'     => [ 'to' => 'tagline', 'type' => 'text', 'wp_option' => 'blogdescription' ], // Tagline
+```
+
+Only `blogname` and `blogdescription` are allowed (`Drift_Website_Sync_Engine::WP_OPTIONS`); anything else is logged and skipped. A blank or missing Airtable value leaves the WordPress value as it is.
+
 ## `entities`
 
 ```php

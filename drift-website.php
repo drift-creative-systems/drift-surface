@@ -3,7 +3,7 @@
  * Plugin Name:       Drift Website
  * Plugin URI:        https://github.com/drift-creative-systems/drift-website
  * Description:       Airtable-powered site engine for Drift App Suite products (Encore and friends). One-way Airtable → WordPress sync driven by a per-product map, Publish webhook, white label, admin access control and the page setup wizard.
- * Version:           1.2.0
+ * Version:           1.3.0
  * Requires at least: 6.2
  * Requires PHP:      8.0
  * Author:            Drift Creative Systems
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'DRIFT_WEBSITE_VERSION', '1.2.0' );
+define( 'DRIFT_WEBSITE_VERSION', '1.3.0' );
 define( 'DRIFT_WEBSITE_FILE', __FILE__ );
 define( 'DRIFT_WEBSITE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'DRIFT_WEBSITE_URL', plugin_dir_url( __FILE__ ) );

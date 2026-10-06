@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.3.0] - 2026-10-06
+
+### Added
+- Settings fields can mirror into core options with `'wp_option'` (allowed: `blogname`, `blogdescription`). Blank or missing values leave the WordPress value alone. No extra API calls.
+- Encore map: **Artist Name** now updates the WordPress Site Title and **Tagline** the WordPress Tagline on every sync.
+
 ## [1.2.0] - 2026-10-06
 
 ### Added

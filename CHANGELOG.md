@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [Unreleased] - 2.0.0
+
+Renamed from **Drift Website** to **Encore Website**. 1.x sites update in place with no manual steps.
+
+### Changed
+- Plugin name, slug, main file (`encore-website.php`), text domain and GitHub repo are now `encore-website`.
+- Code prefixes: `Encore_Website_*` classes, `ENCORE_WEBSITE_*` constants, `encore_website_*` hooks, options and cron events, `_encore_*` post meta, `encore_site_settings` for the synced settings, `ew-` admin CSS classes, `EncoreWebsite` JS object.
+- Theme-facing API is `encore_website_settings()`, `encore_website_setting()`, `encore_website_setting_image()`, `encore_website_linked_posts()`, `encore_website_is_synced()`, `encore_website_last_synced()` and `encore_website_form_hidden_fields()`. (`encore_*` alone belongs to the Encore theme.)
+- Publish webhook is `/wp-json/encore/v1/publish` with an `X-Encore-Secret` header; the Free-plan link is `?encore_publish=`. Form AJAX action is `encore_form`, honeypot `encore_hp`.
+- Secrets are sealed under a new key; 1.x values still unseal and are re-sealed by the migration.
+- `tools/build-zip.py` no longer ships `CLAUDE.md` or `.gitignore`. 1.3.0's zip included `CLAUDE.md`.
+- Encore map: the enquiry form's page-URL field is `source_page` (Airtable column still "Page"). `page` is a WordPress admin query var, and logged-in AJAX requests run `admin_init`. Encore theme 1.3.0 posts `source_page`; older themes' page URL is dropped.
+
+### Added
+- `includes/class-migrate.php`: runs once per site on `plugins_loaded` and on activation. It renames the 1.x options, post meta (including `_drift_links_*`) and user meta in place, re-seals the token and publish secret, deletes 1.x transients and swaps the cron hooks. It never overwrites a new name that already holds data. A failed run logs and retries on the next request.
+- `drift-website.php`: header-less legacy loader. 1.x sites keep `drift-website/drift-website.php` in `active_plugins` after an update; the loader repoints it to `encore-website.php` (multisite too) so WordPress doesn't deactivate the plugin.
+- `includes/compat.php`, kept until 3.0: `drift_*` theme functions, `Drift_Website_*` class aliases, and `drift_website_*` filters and actions passed through with deprecation notices. The `drift/v1` namespace, `X-Drift-Secret` header, `?drift_publish=` link, `drift_form` action, `drift_hp` honeypot and `DRIFT_WEBSITE_*` constants are all still accepted.
+
 ## [1.3.0] - 2026-10-06
 
 ### Added

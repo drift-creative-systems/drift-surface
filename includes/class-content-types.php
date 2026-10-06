@@ -5,19 +5,19 @@
  *
  * They live in the plugin rather than the theme so synced content survives a
  * theme switch. Themes adjust registration with the
- * `drift_website_post_type_args` / `drift_website_taxonomy_args` filters.
+ * `encore_website_post_type_args` / `encore_website_taxonomy_args` filters.
  *
  * Also shows a "managed in Airtable" notice on synced items' edit screens,
  * since anything edited in wp-admin is overwritten by the next sync.
  *
- * @package Drift_Website
+ * @package Encore_Website
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-final class Drift_Website_Content_Types {
+final class Encore_Website_Content_Types {
 
 	public static function init(): void {
 		add_action( 'init', [ __CLASS__, 'register' ], 5 );
@@ -25,7 +25,7 @@ final class Drift_Website_Content_Types {
 	}
 
 	public static function register(): void {
-		$map = Drift_Website_Map::current();
+		$map = Encore_Website_Map::current();
 
 		foreach ( $map['entities'] as $entity ) {
 			if ( empty( $entity['register'] ) || ! is_array( $entity['register'] ) || post_type_exists( $entity['post_type'] ) ) {
@@ -52,12 +52,12 @@ final class Drift_Website_Content_Types {
 			'labels'        => [
 				'name'               => $plural,
 				'singular_name'      => $singular,
-				'add_new_item'       => sprintf( /* translators: %s: singular label. */ __( 'Add %s', 'drift-website' ), $singular ),
-				'edit_item'          => sprintf( /* translators: %s: singular label. */ __( 'Edit %s', 'drift-website' ), $singular ),
+				'add_new_item'       => sprintf( /* translators: %s: singular label. */ __( 'Add %s', 'encore-website' ), $singular ),
+				'edit_item'          => sprintf( /* translators: %s: singular label. */ __( 'Edit %s', 'encore-website' ), $singular ),
 				'all_items'          => $plural,
-				'search_items'       => sprintf( /* translators: %s: plural label. */ __( 'Search %s', 'drift-website' ), $plural ),
-				'not_found'          => sprintf( /* translators: %s: plural label. */ __( 'No %s found.', 'drift-website' ), strtolower( $plural ) ),
-				'not_found_in_trash' => sprintf( /* translators: %s: plural label. */ __( 'No %s in the bin.', 'drift-website' ), strtolower( $plural ) ),
+				'search_items'       => sprintf( /* translators: %s: plural label. */ __( 'Search %s', 'encore-website' ), $plural ),
+				'not_found'          => sprintf( /* translators: %s: plural label. */ __( 'No %s found.', 'encore-website' ), strtolower( $plural ) ),
+				'not_found_in_trash' => sprintf( /* translators: %s: plural label. */ __( 'No %s in the bin.', 'encore-website' ), strtolower( $plural ) ),
 			],
 			'public'              => $public,
 			'publicly_queryable'  => $public,
@@ -73,7 +73,7 @@ final class Drift_Website_Content_Types {
 			'hierarchical'        => false,
 		];
 
-		return (array) apply_filters( 'drift_website_post_type_args', $args, $entity );
+		return (array) apply_filters( 'encore_website_post_type_args', $args, $entity );
 	}
 
 	private static function taxonomy_args( string $taxonomy, array $spec ): array {
@@ -94,7 +94,7 @@ final class Drift_Website_Content_Types {
 			'rewrite'           => $public ? [ 'slug' => (string) ( $spec['rewrite'] ?? $taxonomy ), 'with_front' => false ] : false,
 		];
 
-		return (array) apply_filters( 'drift_website_taxonomy_args', $args, $taxonomy, $spec );
+		return (array) apply_filters( 'encore_website_taxonomy_args', $args, $taxonomy, $spec );
 	}
 
 	/**
@@ -103,20 +103,20 @@ final class Drift_Website_Content_Types {
 	 * @param WP_Post $post Post being edited.
 	 */
 	public static function synced_notice( $post ): void {
-		if ( ! $post instanceof WP_Post || ! get_post_meta( $post->ID, Drift_Website_Sync_Engine::META_ID, true ) ) {
+		if ( ! $post instanceof WP_Post || ! get_post_meta( $post->ID, Encore_Website_Sync_Engine::META_ID, true ) ) {
 			return;
 		}
 
-		$entity = Drift_Website_Map::entity_for_post_type( $post->post_type );
-		$table  = $entity['table'] ?? __( 'Airtable', 'drift-website' );
+		$entity = Encore_Website_Map::entity_for_post_type( $post->post_type );
+		$table  = $entity['table'] ?? __( 'Airtable', 'encore-website' );
 		?>
-		<div class="notice notice-info inline drift-synced-notice" style="margin:12px 0;">
+		<div class="notice notice-info inline ew-synced-notice" style="margin:12px 0;">
 			<p>
-				<strong><?php esc_html_e( 'Managed in Airtable.', 'drift-website' ); ?></strong>
+				<strong><?php esc_html_e( 'Managed in Airtable.', 'encore-website' ); ?></strong>
 				<?php
 				printf(
 					/* translators: %s: Airtable table name. */
-					esc_html__( 'This item comes from the "%s" table. Changes made here are replaced the next time the site publishes — edit it in Airtable instead.', 'drift-website' ),
+					esc_html__( 'This item comes from the "%s" table. Changes made here are replaced the next time the site publishes — edit it in Airtable instead.', 'encore-website' ),
 					esc_html( $table )
 				);
 				?>

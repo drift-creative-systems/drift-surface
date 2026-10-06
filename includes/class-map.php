@@ -1,7 +1,7 @@
 <?php
 /**
  * class-map.php — loads the product map: the one file that says which
- * Airtable tables and fields become which WordPress content for a Drift
+ * Airtable tables and fields become which WordPress content for an Encore Website
  * product (maps/encore.php, later maps/cardiotrack.php …).
  *
  * The sync engine, content types, forms and setup wizard are all generic and
@@ -9,17 +9,17 @@
  * file and a theme — no new PHP classes. See docs/MAP-REFERENCE.md.
  *
  * Extra maps can be registered from a theme or mu-plugin:
- *   add_filter( 'drift_website_maps', fn( $maps ) => $maps + [ 'myproduct' => __DIR__ . '/map.php' ] );
- * and the loaded map adjusted with the `drift_website_map` filter.
+ *   add_filter( 'encore_website_maps', fn( $maps ) => $maps + [ 'myproduct' => __DIR__ . '/map.php' ] );
+ * and the loaded map adjusted with the `encore_website_map` filter.
  *
- * @package Drift_Website
+ * @package Encore_Website
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-final class Drift_Website_Map {
+final class Encore_Website_Map {
 
 	/** Field types the engine understands. */
 	const TYPES = [ 'text', 'html', 'date', 'datetime', 'number', 'bool', 'url', 'email', 'image', 'gallery', 'link', 'list', 'json', 'embed' ];
@@ -34,10 +34,10 @@ final class Drift_Website_Map {
 	 */
 	public static function available(): array {
 		$maps = [];
-		foreach ( (array) glob( DRIFT_WEBSITE_DIR . 'maps/*.php' ) as $file ) {
+		foreach ( (array) glob( ENCORE_WEBSITE_DIR . 'maps/*.php' ) as $file ) {
 			$maps[ sanitize_key( basename( (string) $file, '.php' ) ) ] = (string) $file;
 		}
-		return (array) apply_filters( 'drift_website_maps', $maps );
+		return (array) apply_filters( 'encore_website_maps', $maps );
 	}
 
 	/** Human label for a map slug, without loading the whole thing twice. */
@@ -56,10 +56,10 @@ final class Drift_Website_Map {
 			return self::$current;
 		}
 
-		$slug = (string) Drift_Website_Settings::get( 'product', 'encore' );
+		$slug = (string) Encore_Website_Settings::get( 'product', 'encore' );
 		$file = self::available()[ $slug ] ?? '';
 		$map  = ( $file && is_readable( $file ) ) ? include $file : [];
-		$map  = (array) apply_filters( 'drift_website_map', is_array( $map ) ? $map : [], $slug );
+		$map  = (array) apply_filters( 'encore_website_map', is_array( $map ) ? $map : [], $slug );
 
 		self::$current = self::normalise( $map, $slug );
 		return self::$current;
@@ -97,7 +97,7 @@ final class Drift_Website_Map {
 		}
 
 		if ( is_array( $map['settings'] ) ) {
-			$map['settings'] = array_merge( [ 'table' => '', 'option' => 'drift_site_settings', 'fields' => [] ], $map['settings'] );
+			$map['settings'] = array_merge( [ 'table' => '', 'option' => 'encore_site_settings', 'fields' => [] ], $map['settings'] );
 			$map['settings']['fields'] = self::normalise_fields( (array) $map['settings']['fields'] );
 		}
 
@@ -174,7 +174,7 @@ final class Drift_Website_Map {
 		return self::current()['entities'][ $key ] ?? null;
 	}
 
-	/** Entity whose post type this is, if Drift syncs it. */
+	/** Entity whose post type this is, if Encore Website syncs it. */
 	public static function entity_for_post_type( string $post_type ): ?array {
 		foreach ( self::current()['entities'] as $entity ) {
 			if ( $entity['post_type'] === $post_type ) {

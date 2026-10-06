@@ -1,6 +1,6 @@
-"""Builds dist/drift-website.zip for a GitHub release.
+"""Builds dist/encore-website.zip for a GitHub release.
 
-Entries sit under a drift-website/ top folder with forward slashes, so
+Entries sit under an encore-website/ top folder with forward slashes, so
 WordPress unpacks the update into the right plugin folder on any host.
 (PowerShell 5.1's Compress-Archive writes backslashes, which break on Linux.)
 
@@ -10,10 +10,11 @@ Usage, from the plugin folder:  python tools/build-zip.py
 import os
 import zipfile
 
-SLUG = "drift-website"
+SLUG = "encore-website"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EXCLUDE_DIRS = {".git", "tests", "tools", "dist", "node_modules", ".idea", ".vscode"}
-EXCLUDE_FILES = {".DS_Store", "Thumbs.db"}
+# CLAUDE.md is local dev notes (git-ignored) and must never ship.
+EXCLUDE_FILES = {".DS_Store", "Thumbs.db", ".gitignore", "CLAUDE.md"}
 
 out_dir = os.path.join(ROOT, "dist")
 os.makedirs(out_dir, exist_ok=True)

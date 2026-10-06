@@ -13,7 +13,7 @@ You need Node 18 or newer on your machine (Claude Code already requires it). Che
 
 ### 1. Workspace and base
 
-- In Airtable, create a workspace called **Drift — Encore templates** (Free plan).
+- In Airtable, create a workspace called **Encore Website — Encore templates** (Free plan).
 - Inside it: **Create → Start from scratch**. Name the base **Encore — Template**.
 - Copy the base ID from the address bar: `airtable.com/`**`appXXXXXXXXXXXXXX`**`/…`
 
@@ -29,7 +29,7 @@ Copy the token. It's shown once.
 
 ### 3. Run the builder
 
-Open a terminal in this folder (`drift-website/docs/airtable-setup`) and run:
+Open a terminal in this folder (`encore-website/docs/airtable-setup`) and run:
 
 ```bash
 # macOS / Linux / Git Bash
@@ -132,17 +132,17 @@ At **airtable.com/create/tokens**:
 
 ### 3. Connect WordPress
 
-On the band's site, with the Drift Website plugin and Encore theme active:
+On the band's site, with the Encore Website plugin and Encore theme active:
 
-1. Go to **Drift → Connection**. Paste the base ID and token, choose product *Encore*, and click **Save**.
+1. Go to **Encore Website → Connection**. Paste the base ID and token, choose product *Encore*, and click **Save**.
 2. Click **Check connection**. It should say every table and field is present.
-3. Go to **Drift → Sync → Sync now**. Content appears on the site. Images import in batches; the rest continue automatically a minute later.
-4. Run **Drift → Setup Wizard → Select all → Create**, if the pages don't exist yet.
+3. Go to **Encore Website → Sync → Sync now**. Content appears on the site. Images import in batches; the rest continue automatically a minute later.
+4. Run **Encore Website → Setup Wizard → Select all → Create**, if the pages don't exist yet.
 
 ### 4. Set up the Publish button
 
-1. On Drift → Connection, copy the **Publish link (Free plan)**.
-2. In the band's base, go to **Site Settings → Publish website** field → **Edit field**. Replace `"REPLACE_PER_SITE"` with the link, inside quotes: `"https://bandsite.co.uk/?drift_publish=…"`
+1. On Encore Website → Connection, copy the **Publish link (Free plan)**.
+2. In the band's base, go to **Site Settings → Publish website** field → **Edit field**. Replace `"REPLACE_PER_SITE"` with the link, inside quotes: `"https://bandsite.co.uk/?encore_publish=…"`
 3. Test it: click the button. A new tab says "Your website is up to date" and lists what changed.
 
 The link contains the site's secret, so only share it inside the band's own base. If it ever leaks, use "Generate a new secret" on the Connection tab and update the button.
@@ -166,7 +166,7 @@ When the master template changes (new fields, new tables), bring every band's ba
 
 At **airtable.com/create/tokens → Create token**:
 
-- **Name:** `Drift maintenance`
+- **Name:** `Encore Website maintenance`
 - **Scopes:** `schema.bases:read`, `schema.bases:write`. No data scopes are needed.
 - **Access:** every client workspace, or "All current and future bases in all current and future workspaces"
 
@@ -202,7 +202,7 @@ Then work through each base's **To do by hand** list. Re-running is safe and cos
 
 ### 4. Then update the websites
 
-Release the plugin and theme update, then publish each site (or **Drift → Sync → Sync now**) and check **Drift → Connection → Check connection**.
+Release the plugin and theme update, then publish each site (or **Encore Website → Sync → Sync now**) and check **Encore Website → Connection → Check connection**.
 
 Since plugin 1.2.0 the order isn't critical: if a site updates before its base is migrated, it skips the missing fields, keeps their current values, and notes them in the sync log. The rest of the content still syncs.
 

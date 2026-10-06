@@ -1,9 +1,9 @@
 /**
- * login.css — default Drift login screen (wp-login.php).
+ * login.css — default Encore Website login screen (wp-login.php).
  *
- * Enqueued by Drift_Website_White_Label::login_styles() after core's `login`
+ * Enqueued by Encore_Website_White_Label::login_styles() after core's `login`
  * stylesheet. Per-site White Label settings are added inline after this
- * file, so anything picked on Drift → White Label wins.
+ * file, so anything picked on Encore Website → White Label wins.
  */
 
 /* Page: black stage with a soft pink spotlight from above. */

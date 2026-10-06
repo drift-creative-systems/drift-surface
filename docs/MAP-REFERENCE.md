@@ -1,6 +1,6 @@
 # Product map reference
 
-A product map is a PHP file returning an array, in `maps/{slug}.php` or registered with the `drift_website_maps` filter. It is the only product-specific code in the plugin. Everything else (sync, post types, forms, wizard) is generic and reads from it. `maps/encore.php` is the worked example.
+A product map is a PHP file returning an array, in `maps/{slug}.php` or registered with the `encore_website_maps` filter. It is the only product-specific code in the plugin. Everything else (sync, post types, forms, wizard) is generic and reads from it. `maps/encore.php` is the worked example.
 
 ## Top level
 
@@ -15,14 +15,14 @@ A product map is a PHP file returning an array, in `maps/{slug}.php` or register
 | `taxonomies` | array | Taxonomies to register |
 | `forms` | array | Website → Airtable forms |
 | `pages` | array | Setup Wizard page definitions |
-| `theme` | `[ 'slug', 'name', 'zip' ]` | Optional. The theme this product renders with. Until it (or a child of it) is active, Drift shows an Install & activate notice (from `zip`) and the Setup Wizard is off |
+| `theme` | `[ 'slug', 'name', 'zip' ]` | Optional. The theme this product renders with. Until it (or a child of it) is active, Encore Website shows an Install & activate notice (from `zip`) and the Setup Wizard is off |
 
 ## `settings`
 
 ```php
 'settings' => [
     'table'  => 'Site Settings',
-    'option' => 'drift_site_settings',          // read with drift_setting( 'key' )
+    'option' => 'encore_site_settings',          // read with encore_website_setting( 'key' )
     'fields' => [ 'Artist Name' => [ 'to' => 'name', 'type' => 'text' ], … ],
 ],
 ```
@@ -36,7 +36,7 @@ A settings field can also mirror into a core WordPress option with `'wp_option'`
 'Tagline'     => [ 'to' => 'tagline', 'type' => 'text', 'wp_option' => 'blogdescription' ], // Tagline
 ```
 
-Only `blogname` and `blogdescription` are allowed (`Drift_Website_Sync_Engine::WP_OPTIONS`); anything else is logged and skipped. A blank or missing Airtable value leaves the WordPress value as it is.
+Only `blogname` and `blogdescription` are allowed (`Encore_Website_Sync_Engine::WP_OPTIONS`); anything else is logged and skipped. A blank or missing Airtable value leaves the WordPress value as it is.
 
 ## `entities`
 
@@ -57,7 +57,7 @@ Only `blogname` and `blogdescription` are allowed (`Drift_Website_Sync_Engine::W
 ],
 ```
 
-`register` keys are `label`, `singular`, `public` (default true), `rewrite`, `has_archive`, `menu_icon`, `menu_position` and `supports`. Adjust anything further with the `drift_website_post_type_args` filter.
+`register` keys are `label`, `singular`, `public` (default true), `rewrite`, `has_archive`, `menu_icon`, `menu_position` and `supports`. Adjust anything further with the `encore_website_post_type_args` filter.
 
 ## Field specs: `'Airtable field' => [ 'to' => …, 'type' => … ]`
 
@@ -91,7 +91,7 @@ The `'Field' => 'content'` shorthand also works; the type is then inferred.
 | `embed` | `<iframe>` tags only, `https` sources only; everything else (scripts, `srcdoc`, surrounding text) is stripped. Use with a Long text field, rich text **off** |
 | `image` | attachment ID (first attachment) |
 | `gallery` | array of attachment IDs |
-| `link` | array of WordPress post IDs for linked records, in Airtable's order. Read with `drift_linked_posts( $post_id, 'key' )` |
+| `link` | array of WordPress post IDs for linked records, in Airtable's order. Read with `encore_website_linked_posts( $post_id, 'key' )` |
 
 ## `forms`
 
@@ -109,8 +109,8 @@ The `'Field' => 'content'` shorthand also works; the type is then inferred.
 In the theme's form markup:
 
 ```php
-<form class="drift-form" method="post" action="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>">
-    <?php drift_form_hidden_fields( 'enquiry' ); ?>
+<form class="ew-form" method="post" action="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>">
+    <?php encore_website_form_hidden_fields( 'enquiry' ); ?>
     <input name="name"> <input name="email" type="email"> <textarea name="message"></textarea>
     <button>Send</button>
 </form>
@@ -129,17 +129,17 @@ Submit via AJAX. The JSON response is `{ success, data: { message, fields[] } }`
 ],
 ```
 
-Use `Drift_Website_Page_Creator::IMAGE_PLACEHOLDER` for any image sub-field. The layouts named in `rows` must exist in the active theme's `page_builder` field.
+Use `Encore_Website_Page_Creator::IMAGE_PLACEHOLDER` for any image sub-field. The layouts named in `rows` must exist in the active theme's `page_builder` field.
 
 ## Hooks
 
 | Hook | Type | Use |
 |---|---|---|
-| `drift_website_maps` | filter | Register extra map files |
-| `drift_website_map` | filter | Adjust the loaded map |
-| `drift_website_post_type_args` / `drift_website_taxonomy_args` | filter | Registration args |
-| `drift_website_admin_tabs` | filter | Add Drift admin tabs |
-| `drift_website_form_values` | filter | Alter a form's Airtable fields before saving |
-| `drift_website_loaded` | action | Plugin booted |
-| `drift_website_synced` | action | After every sync run (status array) |
-| `drift_website_form_submitted` | action | After a form submission |
+| `encore_website_maps` | filter | Register extra map files |
+| `encore_website_map` | filter | Adjust the loaded map |
+| `encore_website_post_type_args` / `encore_website_taxonomy_args` | filter | Registration args |
+| `encore_website_admin_tabs` | filter | Add Encore Website admin tabs |
+| `encore_website_form_values` | filter | Alter a form's Airtable fields before saving |
+| `encore_website_loaded` | action | Plugin booted |
+| `encore_website_synced` | action | After every sync run (status array) |
+| `encore_website_form_submitted` | action | After a form submission |

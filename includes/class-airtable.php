@@ -14,18 +14,18 @@
  * Token scopes needed: data.records:read (sync), data.records:write (forms,
  * optional), schema.bases:read (connection check, optional).
  *
- * @package Drift_Website
+ * @package Encore_Website
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-final class Drift_Website_Airtable {
+final class Encore_Website_Airtable {
 
 	const API          = 'https://api.airtable.com/v0/';
-	const USAGE_OPTION = 'drift_website_api_usage';
-	const PAUSE_KEY    = 'drift_website_airtable_pause';
+	const USAGE_OPTION = 'encore_website_api_usage';
+	const PAUSE_KEY    = 'encore_website_airtable_pause';
 	const PAGE_SIZE    = 100;
 	const MAX_PAGES    = 60;     // 6,000 rows — a runaway guard, not a real limit (Free plan caps a base at 1,000).
 	const THROTTLE_US  = 220000; // ~4.5 req/s, under Airtable's 5/s per base.
@@ -42,17 +42,17 @@ final class Drift_Website_Airtable {
 	 * @return array|WP_Error Decoded body, or WP_Error.
 	 */
 	public static function request( string $method, string $path, array $query = [], ?array $body = null ) {
-		$token = Drift_Website_Settings::token();
+		$token = Encore_Website_Settings::token();
 		if ( '' === $token ) {
-			return new WP_Error( 'drift_not_connected', __( 'No Airtable token saved.', 'drift-website' ) );
+			return new WP_Error( 'encore_not_connected', __( 'No Airtable token saved.', 'encore-website' ) );
 		}
 
 		$paused_until = (int) get_transient( self::PAUSE_KEY );
 		if ( $paused_until > time() ) {
 			return new WP_Error(
-				'drift_rate_limited',
+				'encore_rate_limited',
 				/* translators: %d: seconds. */
-				sprintf( __( 'Airtable asked us to slow down. Retrying is allowed in %d seconds.', 'drift-website' ), $paused_until - time() )
+				sprintf( __( 'Airtable asked us to slow down. Retrying is allowed in %d seconds.', 'encore-website' ), $paused_until - time() )
 			);
 		}
 
@@ -86,7 +86,7 @@ final class Drift_Website_Airtable {
 
 		if ( 429 === $code ) {
 			set_transient( self::PAUSE_KEY, time() + 35, 35 );
-			return new WP_Error( 'drift_rate_limited', __( 'Airtable rate limit hit (HTTP 429). Paused for 35 seconds.', 'drift-website' ) );
+			return new WP_Error( 'encore_rate_limited', __( 'Airtable rate limit hit (HTTP 429). Paused for 35 seconds.', 'encore-website' ) );
 		}
 
 		if ( $code < 200 || $code >= 300 || ! is_array( $decoded ) ) {
@@ -95,9 +95,9 @@ final class Drift_Website_Airtable {
 				: '';
 			$type    = is_array( $decoded ) && is_array( $decoded['error'] ?? null ) ? (string) ( $decoded['error']['type'] ?? '' ) : '';
 			return new WP_Error(
-				'drift_airtable_http',
+				'encore_airtable_http',
 				/* translators: 1: HTTP status, 2: Airtable's message. */
-				trim( sprintf( __( 'Airtable returned HTTP %1$d. %2$s', 'drift-website' ), $code, $message ) ),
+				trim( sprintf( __( 'Airtable returned HTTP %1$d. %2$s', 'encore-website' ), $code, $message ) ),
 				[ 'status' => $code, 'type' => $type, 'message' => $message ]
 			);
 		}
@@ -115,9 +115,9 @@ final class Drift_Website_Airtable {
 	 * @return array|WP_Error
 	 */
 	public static function list_records( string $table, array $args = [] ) {
-		$base = (string) Drift_Website_Settings::get( 'base_id' );
-		if ( ! Drift_Website_Settings::valid_base_id( $base ) ) {
-			return new WP_Error( 'drift_not_connected', __( 'No valid Airtable base ID saved.', 'drift-website' ) );
+		$base = (string) Encore_Website_Settings::get( 'base_id' );
+		if ( ! Encore_Website_Settings::valid_base_id( $base ) ) {
+			return new WP_Error( 'encore_not_connected', __( 'No valid Airtable base ID saved.', 'encore-website' ) );
 		}
 
 		$query = [ 'pageSize' => self::PAGE_SIZE ];
@@ -211,9 +211,9 @@ final class Drift_Website_Airtable {
 	 * @return array|WP_Error The created record.
 	 */
 	public static function create_record( string $table, array $fields ) {
-		$base = (string) Drift_Website_Settings::get( 'base_id' );
-		if ( ! Drift_Website_Settings::valid_base_id( $base ) ) {
-			return new WP_Error( 'drift_not_connected', __( 'No valid Airtable base ID saved.', 'drift-website' ) );
+		$base = (string) Encore_Website_Settings::get( 'base_id' );
+		if ( ! Encore_Website_Settings::valid_base_id( $base ) ) {
+			return new WP_Error( 'encore_not_connected', __( 'No valid Airtable base ID saved.', 'encore-website' ) );
 		}
 
 		return self::request(
@@ -230,9 +230,9 @@ final class Drift_Website_Airtable {
 	 * @return array|WP_Error [ table name => [ field name => type ] ].
 	 */
 	public static function schema() {
-		$base = (string) Drift_Website_Settings::get( 'base_id' );
-		if ( ! Drift_Website_Settings::valid_base_id( $base ) ) {
-			return new WP_Error( 'drift_not_connected', __( 'No valid Airtable base ID saved.', 'drift-website' ) );
+		$base = (string) Encore_Website_Settings::get( 'base_id' );
+		if ( ! Encore_Website_Settings::valid_base_id( $base ) ) {
+			return new WP_Error( 'encore_not_connected', __( 'No valid Airtable base ID saved.', 'encore-website' ) );
 		}
 
 		$body = self::request( 'GET', 'meta/bases/' . rawurlencode( $base ) . '/tables' );
@@ -313,7 +313,7 @@ final class Drift_Website_Airtable {
 	}
 
 	public static function budget(): int {
-		return (int) Drift_Website_Settings::get( 'api_budget', 1000 );
+		return (int) Encore_Website_Settings::get( 'api_budget', 1000 );
 	}
 
 	public static function over_budget(): bool {

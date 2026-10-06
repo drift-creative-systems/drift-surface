@@ -3,21 +3,22 @@
  * class-settings.php — the plugin's one settings option.
  *
  * Connection settings. Everything lives in one option (self::OPTION), secrets
- * encrypted by Drift_Website_Crypto.
+ * encrypted by Encore_Website_Crypto.
  *
  * wp-config.php overrides (handy for local/staging, and they win over the
- * screen): DRIFT_WEBSITE_AIRTABLE_BASE, DRIFT_WEBSITE_AIRTABLE_TOKEN.
+ * screen): ENCORE_WEBSITE_AIRTABLE_BASE, ENCORE_WEBSITE_AIRTABLE_TOKEN. The
+ * 1.x DRIFT_WEBSITE_* names still work (encore_website_constant()).
  *
- * @package Drift_Website
+ * @package Encore_Website
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-final class Drift_Website_Settings {
+final class Encore_Website_Settings {
 
-	const OPTION = 'drift_website_settings';
+	const OPTION = 'encore_website_settings';
 
 	public static function defaults(): array {
 		return [
@@ -48,8 +49,8 @@ final class Drift_Website_Settings {
 		if ( in_array( $key, [ 'token', 'publish_secret' ], true ) ) {
 			return $default;
 		}
-		if ( 'base_id' === $key && defined( 'DRIFT_WEBSITE_AIRTABLE_BASE' ) && DRIFT_WEBSITE_AIRTABLE_BASE ) {
-			return (string) DRIFT_WEBSITE_AIRTABLE_BASE;
+		if ( 'base_id' === $key && self::base_from_constant() ) {
+			return encore_website_constant( 'AIRTABLE_BASE' );
 		}
 
 		$all = self::all();
@@ -57,10 +58,10 @@ final class Drift_Website_Settings {
 	}
 
 	public static function token(): string {
-		if ( defined( 'DRIFT_WEBSITE_AIRTABLE_TOKEN' ) && DRIFT_WEBSITE_AIRTABLE_TOKEN ) {
-			return (string) DRIFT_WEBSITE_AIRTABLE_TOKEN;
+		if ( self::token_from_constant() ) {
+			return encore_website_constant( 'AIRTABLE_TOKEN' );
 		}
-		return Drift_Website_Crypto::unseal( (string) ( self::all()['token'] ?? '' ) );
+		return Encore_Website_Crypto::unseal( (string) ( self::all()['token'] ?? '' ) );
 	}
 
 	public static function has_token(): bool {
@@ -72,11 +73,11 @@ final class Drift_Website_Settings {
 	}
 
 	public static function token_from_constant(): bool {
-		return defined( 'DRIFT_WEBSITE_AIRTABLE_TOKEN' ) && DRIFT_WEBSITE_AIRTABLE_TOKEN;
+		return '' !== encore_website_constant( 'AIRTABLE_TOKEN' );
 	}
 
 	public static function base_from_constant(): bool {
-		return defined( 'DRIFT_WEBSITE_AIRTABLE_BASE' ) && DRIFT_WEBSITE_AIRTABLE_BASE;
+		return '' !== encore_website_constant( 'AIRTABLE_BASE' );
 	}
 
 	public static function valid_base_id( string $id ): bool {
@@ -86,7 +87,7 @@ final class Drift_Website_Settings {
 	/* ── Publish secret ──────────────────────────────────────────────── */
 
 	public static function publish_secret(): string {
-		return Drift_Website_Crypto::unseal( (string) ( self::all()['publish_secret'] ?? '' ) );
+		return Encore_Website_Crypto::unseal( (string) ( self::all()['publish_secret'] ?? '' ) );
 	}
 
 	public static function ensure_publish_secret(): void {
@@ -98,7 +99,7 @@ final class Drift_Website_Settings {
 	public static function regenerate_publish_secret(): string {
 		$secret        = wp_generate_password( 40, false, false );
 		$all           = self::all();
-		$all['publish_secret'] = Drift_Website_Crypto::seal( $secret );
+		$all['publish_secret'] = Encore_Website_Crypto::seal( $secret );
 		update_option( self::OPTION, $all, false );
 		return $secret;
 	}
@@ -109,7 +110,7 @@ final class Drift_Website_Settings {
 	 * Sanitises and saves the Connection tab. A blank token field keeps the
 	 * stored token; tick "clear_token" to remove it.
 	 *
-	 * @param array $input Unslashed $_POST['drift'].
+	 * @param array $input Unslashed $_POST['encore'].
 	 * @return array{changed_connection: bool} What changed, for the caller.
 	 */
 	public static function save( array $input ): array {
@@ -125,10 +126,10 @@ final class Drift_Website_Settings {
 		if ( ! empty( $input['clear_token'] ) ) {
 			$after['token'] = '';
 		} elseif ( '' !== $token ) {
-			$after['token'] = Drift_Website_Crypto::seal( preg_replace( '/[^A-Za-z0-9._-]/', '', $token ) );
+			$after['token'] = Encore_Website_Crypto::seal( preg_replace( '/[^A-Za-z0-9._-]/', '', $token ) );
 		}
 
-		$products         = array_keys( Drift_Website_Map::available() );
+		$products         = array_keys( Encore_Website_Map::available() );
 		$product          = sanitize_key( (string) ( $input['product'] ?? '' ) );
 		$after['product'] = in_array( $product, $products, true ) ? $product : ( $products[0] ?? 'encore' );
 
@@ -139,9 +140,9 @@ final class Drift_Website_Settings {
 		update_option( self::OPTION, $after, false );
 
 		if ( '1' === $after['daily_check'] ) {
-			Drift_Website_Publish::schedule_daily_check();
+			Encore_Website_Publish::schedule_daily_check();
 		} else {
-			Drift_Website_Publish::unschedule_daily_check();
+			Encore_Website_Publish::unschedule_daily_check();
 		}
 
 		return [

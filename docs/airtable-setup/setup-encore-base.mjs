@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Drift: Encore — Airtable base builder and migrator.
+ * Encore — Airtable base builder and migrator.
  *
  * BUILD a new base: creates every table and field the Encore map expects
  * (maps/encore.php, docs/ENCORE-AIRTABLE-BASE.md) in an EMPTY base you've
@@ -24,7 +24,7 @@
  * Tokens (airtable.com/create/tokens):
  * - Build: access to that ONE base; scopes schema.bases:read, schema.bases:write,
  *   data.records:read, data.records:write. Delete it afterwards.
- * - Migrate: a "Drift maintenance" token with access to every client workspace;
+ * - Migrate: a "Encore Website maintenance" token with access to every client workspace;
  *   scopes schema.bases:read and schema.bases:write only. Your account needs
  *   Creator (or Owner) access in each workspace to change its bases.
  * Never give a website a token with schema:write.
@@ -470,7 +470,7 @@ async function migrateBase(base, name, permission) {
 }
 
 async function migrate() {
-	console.log(`Drift: Encore migrate → template v${TEMPLATE_VERSION}`);
+	console.log(`Encore migrate → template v${TEMPLATE_VERSION}`);
 	console.log(DRY ? 'DRY RUN — nothing will change. Add --apply to make these changes.' : 'APPLYING changes.');
 
 	let targets;
@@ -700,7 +700,7 @@ try {
 	if (MIGRATE) {
 		process.exitCode = await migrate();
 	} else {
-		console.log(`Drift: Encore base builder → ${BASE} (template v${TEMPLATE_VERSION})${DRY ? ' (dry run)' : ''}`);
+		console.log(`Encore base builder → ${BASE} (template v${TEMPLATE_VERSION})${DRY ? ' (dry run)' : ''}`);
 		console.log('\nReading the base…');
 		const result = await buildSchema(BASE, await getSchema(BASE));
 		await stamp(BASE, result.tables);

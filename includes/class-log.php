@@ -1,19 +1,19 @@
 <?php
 /**
  * class-log.php — a small rolling activity log (last 100 entries) shown on the
- * Drift → Sync tab, so "why didn't my gig appear?" can be answered without
+ * Encore Website → Sync tab, so "why didn't my gig appear?" can be answered without
  * server log access. Errors also go to the PHP error log.
  *
- * @package Drift_Website
+ * @package Encore_Website
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-final class Drift_Website_Log {
+final class Encore_Website_Log {
 
-	const OPTION = 'drift_website_log';
+	const OPTION = 'encore_website_log';
 	const LIMIT  = 100;
 
 	public static function info( string $message, string $source = 'sync' ): void {
@@ -26,7 +26,7 @@ final class Drift_Website_Log {
 
 	public static function error( string $message, string $source = 'sync' ): void {
 		self::add( 'error', $message, $source );
-		error_log( 'Drift Website [' . $source . ']: ' . $message ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+		error_log( 'Encore Website [' . $source . ']: ' . $message ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 	}
 
 	private static function add( string $level, string $message, string $source ): void {

@@ -1,6 +1,6 @@
 <?php
 /**
- * maps/encore.php — Drift: Encore (band & artist websites).
+ * maps/encore.php — Encore (band & artist websites).
  *
  * The contract between the Encore Airtable template base and the Encore
  * theme. Table and field names here must match the base exactly (the
@@ -9,14 +9,14 @@
  *
  * Map reference: docs/MAP-REFERENCE.md.
  *
- * @package Drift_Website
+ * @package Encore_Website
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-$placeholder = Drift_Website_Page_Creator::IMAGE_PLACEHOLDER;
+$placeholder = Encore_Website_Page_Creator::IMAGE_PLACEHOLDER;
 
 return [
 	'label'              => 'Encore',
@@ -31,7 +31,7 @@ return [
 
 	/*
 	 * The theme Encore renders with. Until it (or a child of it) is active,
-	 * Drift shows an install/activate notice and the Setup Wizard is off.
+	 * Encore Website shows an install/activate notice and the Setup Wizard is off.
 	 * The theme refuses to render without this plugin, so the two always
 	 * ship together.
 	 */
@@ -41,10 +41,10 @@ return [
 		'zip'  => 'https://github.com/drift-creative-systems/encore-theme/releases/latest/download/encore-theme.zip',
 	],
 
-	/* ── One-row table → drift_setting( key ) ───────────────────────── */
+	/* ── One-row table → encore_website_setting( key ) ───────────────────────── */
 	'settings'           => [
 		'table'  => 'Site Settings',
-		'option' => 'drift_site_settings',
+		'option' => 'encore_site_settings',
 		'fields' => [
 			'Artist Name'      => [ 'to' => 'name', 'type' => 'text', 'wp_option' => 'blogname' ],           // Also Settings → General → Site Title.
 			'Tagline'          => [ 'to' => 'tagline', 'type' => 'text', 'wp_option' => 'blogdescription' ], // Also Settings → General → Tagline.
@@ -250,7 +250,7 @@ return [
 				'event_date'   => 'Event Date',
 				'location'     => 'Location',
 				'message'      => 'Message',
-				'page'         => 'Page',
+				'source_page'  => 'Page', // Not 'page': that's a WordPress admin query var, and logged-in AJAX runs admin_init.
 			],
 			'required' => [ 'name', 'email', 'message' ],
 			'email'    => [ 'email' ],

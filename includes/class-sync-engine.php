@@ -27,26 +27,26 @@
  * class wrote at sync time (theme CLAUDE.md rule: Airtable stays out of the
  * render path).
  *
- * @package Drift_Website
+ * @package Encore_Website
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-final class Drift_Website_Sync_Engine {
+final class Encore_Website_Sync_Engine {
 
-	const META_ID      = '_drift_airtable_id';
-	const META_HASH    = '_drift_airtable_hash';
-	const META_ENTITY  = '_drift_entity';
-	const LINKS_PREFIX = '_drift_links_';
+	const META_ID      = '_encore_airtable_id';
+	const META_HASH    = '_encore_airtable_hash';
+	const META_ENTITY  = '_encore_entity';
+	const LINKS_PREFIX = '_encore_links_';
 
-	const LOCK          = 'drift_website_sync_lock';
-	const CACHE         = 'drift_website_sync_records';
-	const STATUS_OPTION = 'drift_website_sync_status';
+	const LOCK          = 'encore_website_sync_lock';
+	const CACHE         = 'encore_website_sync_records';
+	const STATUS_OPTION = 'encore_website_sync_status';
 
-	const HOOK_RUN      = 'drift_website_run_sync';
-	const HOOK_CONTINUE = 'drift_website_continue_sync';
+	const HOOK_RUN      = 'encore_website_run_sync';
+	const HOOK_CONTINUE = 'encore_website_continue_sync';
 
 	/** Core options a settings field may mirror via 'wp_option'. Kept short on purpose. */
 	const WP_OPTIONS = [ 'blogname', 'blogdescription' ];
@@ -93,8 +93,8 @@ final class Drift_Website_Sync_Engine {
 		$force     = ! empty( $opts['force'] );
 		$use_cache = ! empty( $opts['use_cache'] );
 
-		if ( ! Drift_Website_Settings::is_connected() ) {
-			return self::finish_early( __( 'Not connected to Airtable — add the base ID and token on Drift → Connection.', 'drift-website' ) );
+		if ( ! Encore_Website_Settings::is_connected() ) {
+			return self::finish_early( __( 'Not connected to Airtable — add the base ID and token on Encore Website → Connection.', 'encore-website' ) );
 		}
 
 		if ( get_transient( self::LOCK ) ) {
@@ -102,7 +102,7 @@ final class Drift_Website_Sync_Engine {
 			if ( 'publish' === $trigger && ! wp_next_scheduled( self::HOOK_RUN, [ 'publish-retry' ] ) ) {
 				wp_schedule_single_event( time() + 120, self::HOOK_RUN, [ 'publish-retry' ] );
 			}
-			return self::finish_early( __( 'A sync is already running. This one has been skipped.', 'drift-website' ), false );
+			return self::finish_early( __( 'A sync is already running. This one has been skipped.', 'encore-website' ), false );
 		}
 
 		set_transient( self::LOCK, time(), 10 * MINUTE_IN_SECONDS );
@@ -115,12 +115,12 @@ final class Drift_Website_Sync_Engine {
 		}
 
 		$started  = microtime( true );
-		$map      = Drift_Website_Map::current();
+		$map      = Encore_Website_Map::current();
 		$messages = [];
 		$ok       = true;
-		$calls    = Drift_Website_Airtable::usage()['calls'];
+		$calls    = Encore_Website_Airtable::usage()['calls'];
 
-		Drift_Website_Media::reset_run();
+		Encore_Website_Media::reset_run();
 
 		$records = $use_cache ? get_transient( self::CACHE ) : false;
 		if ( ! is_array( $records ) ) {
@@ -146,9 +146,9 @@ final class Drift_Website_Sync_Engine {
 
 		self::resolve_links( $map );
 
-		$deferred = Drift_Website_Media::was_deferred();
+		$deferred = Encore_Website_Media::was_deferred();
 		if ( $deferred ) {
-			$messages[] = __( 'More images to import — continuing automatically in about a minute.', 'drift-website' );
+			$messages[] = __( 'More images to import — continuing automatically in about a minute.', 'encore-website' );
 			if ( ! wp_next_scheduled( self::HOOK_CONTINUE ) ) {
 				wp_schedule_single_event( time() + MINUTE_IN_SECONDS, self::HOOK_CONTINUE );
 			}
@@ -156,7 +156,7 @@ final class Drift_Website_Sync_Engine {
 			delete_transient( self::CACHE );
 		}
 
-		$calls_used = Drift_Website_Airtable::usage()['calls'] - $calls;
+		$calls_used = Encore_Website_Airtable::usage()['calls'] - $calls;
 
 		$status = array_merge( self::status(), [
 			'last_run'       => time(),
@@ -166,7 +166,7 @@ final class Drift_Website_Sync_Engine {
 			'messages'       => $messages,
 			'duration'       => round( microtime( true ) - $started, 1 ),
 			'api_calls'      => $calls_used,
-			'images'         => Drift_Website_Media::imported_count(),
+			'images'         => Encore_Website_Media::imported_count(),
 			'pending_images' => $deferred,
 		] );
 		update_option( self::STATUS_OPTION, $status, false );
@@ -177,16 +177,16 @@ final class Drift_Website_Sync_Engine {
 
 		$summary = sprintf(
 			/* translators: 1: trigger, 2: seconds, 3: API calls, 4: images imported. */
-			__( 'Sync (%1$s) finished in %2$ss — %3$d API calls, %4$d images imported.', 'drift-website' ),
+			__( 'Sync (%1$s) finished in %2$ss — %3$d API calls, %4$d images imported.', 'encore-website' ),
 			$trigger,
 			$status['duration'],
 			$calls_used,
 			$status['images']
 		);
 		if ( $ok ) {
-			Drift_Website_Log::info( $summary . ' ' . implode( ' ', $messages ) );
+			Encore_Website_Log::info( $summary . ' ' . implode( ' ', $messages ) );
 		} else {
-			Drift_Website_Log::warning( $summary . ' ' . implode( ' ', $messages ) );
+			Encore_Website_Log::warning( $summary . ' ' . implode( ' ', $messages ) );
 		}
 
 		/**
@@ -194,14 +194,14 @@ final class Drift_Website_Sync_Engine {
 		 *
 		 * @param array $status Run status (ok, messages, duration, api_calls…).
 		 */
-		do_action( 'drift_website_synced', $status );
+		do_action( 'encore_website_synced', $status );
 
 		return [ 'ok' => $ok, 'messages' => $messages ];
 	}
 
 	private static function finish_early( string $message, bool $log = true ): array {
 		if ( $log ) {
-			Drift_Website_Log::warning( $message );
+			Encore_Website_Log::warning( $message );
 		}
 		return [ 'ok' => false, 'messages' => [ $message ] ];
 	}
@@ -233,7 +233,7 @@ final class Drift_Website_Sync_Engine {
 				$fields[] = (string) $map['publish']['field'];
 			}
 			$out['__settings'] = self::unwrap(
-				Drift_Website_Airtable::list_records_lenient(
+				Encore_Website_Airtable::list_records_lenient(
 					$map['settings']['table'],
 					[ 'maxRecords' => 1, 'fields' => array_values( array_unique( $fields ) ) ]
 				),
@@ -243,17 +243,17 @@ final class Drift_Website_Sync_Engine {
 		}
 
 		foreach ( $map['entities'] as $key => $entity ) {
-			usleep( Drift_Website_Airtable::THROTTLE_US );
+			usleep( Encore_Website_Airtable::THROTTLE_US );
 			$out[ $key ] = self::unwrap(
-				Drift_Website_Airtable::list_records_lenient(
+				Encore_Website_Airtable::list_records_lenient(
 					$entity['table'],
 					[
 						'view'            => $entity['view'],
 						'filterByFormula' => $entity['filter'],
 						'sort'            => $entity['sort'],
-						'fields'          => Drift_Website_Map::requested_fields( $entity ),
+						'fields'          => Encore_Website_Map::requested_fields( $entity ),
 					],
-					Drift_Website_Map::structural_fields( $entity )
+					Encore_Website_Map::structural_fields( $entity )
 				),
 				$key,
 				$out['__missing']
@@ -294,11 +294,11 @@ final class Drift_Website_Sync_Engine {
 		}
 		$note = sprintf(
 			/* translators: 1: table, 2: comma-separated field names. */
-			__( '%1$s: field(s) not in Airtable, skipped and existing values kept: %2$s. Add them to the base (Drift → Connection → Check connection lists everything missing).', 'drift-website' ),
+			__( '%1$s: field(s) not in Airtable, skipped and existing values kept: %2$s. Add them to the base (Encore Website → Connection → Check connection lists everything missing).', 'encore-website' ),
 			$label,
 			'"' . implode( '", "', $missing ) . '"'
 		);
-		Drift_Website_Log::warning( $note );
+		Encore_Website_Log::warning( $note );
 		return ' ' . $note;
 	}
 
@@ -314,15 +314,15 @@ final class Drift_Website_Sync_Engine {
 		$label = $spec['table'];
 
 		if ( is_wp_error( $records ) || ! is_array( $records ) ) {
-			$error = is_wp_error( $records ) ? $records->get_error_message() : __( 'not fetched', 'drift-website' );
-			Drift_Website_Log::error( $label . ': ' . $error );
+			$error = is_wp_error( $records ) ? $records->get_error_message() : __( 'not fetched', 'encore-website' );
+			Encore_Website_Log::error( $label . ': ' . $error );
 			/* translators: 1: table, 2: error. */
-			return [ 'ok' => false, 'message' => sprintf( __( '%1$s: failed — %2$s', 'drift-website' ), $label, $error ) ];
+			return [ 'ok' => false, 'message' => sprintf( __( '%1$s: failed — %2$s', 'encore-website' ), $label, $error ) ];
 		}
 
 		if ( ! $records ) {
 			/* translators: %s: table. */
-			return [ 'ok' => false, 'message' => sprintf( __( '%s: the table is empty — add one row.', 'drift-website' ), $label ) ];
+			return [ 'ok' => false, 'message' => sprintf( __( '%s: the table is empty — add one row.', 'encore-website' ), $label ) ];
 		}
 
 		$record   = $records[0];
@@ -344,7 +344,7 @@ final class Drift_Website_Sync_Engine {
 
 			if ( 'image' === $field['type'] ) {
 				$first          = is_array( $raw ) && is_array( $raw[0] ?? null ) ? $raw[0] : null;
-				$id             = $first ? Drift_Website_Media::attachment_id( $first ) : 0;
+				$id             = $first ? Encore_Website_Media::attachment_id( $first ) : 0;
 				$values[ $key ] = $id ?: ( $first ? (int) ( $previous[ $key ] ?? 0 ) : 0 ); // Keep the old image while a new one is pending.
 				continue;
 			}
@@ -357,14 +357,14 @@ final class Drift_Website_Sync_Engine {
 		}
 
 		if ( ! empty( $map['publish']['field'] ) ) {
-			$values['_last_published'] = Drift_Website_Media::plain( $fields[ $map['publish']['field'] ] ?? '' );
+			$values['_last_published'] = Encore_Website_Media::plain( $fields[ $map['publish']['field'] ] ?? '' );
 		}
 
 		update_option( $spec['option'], $values, true );
 		self::mirror_wp_options( $spec['fields'], $values, $missing );
 
 		/* translators: %s: table. */
-		return [ 'ok' => true, 'message' => sprintf( __( '%s: updated.', 'drift-website' ), $label ) . self::missing_note( $label, $missing ) ];
+		return [ 'ok' => true, 'message' => sprintf( __( '%s: updated.', 'encore-website' ), $label ) . self::missing_note( $label, $missing ) ];
 	}
 
 	/**
@@ -384,7 +384,7 @@ final class Drift_Website_Sync_Engine {
 			}
 			if ( ! in_array( $option, self::WP_OPTIONS, true ) ) {
 				/* translators: 1: field, 2: option name. */
-				Drift_Website_Log::warning( sprintf( __( '%1$s: "%2$s" is not an option Drift may update; skipped.', 'drift-website' ), $name, $option ) );
+				Encore_Website_Log::warning( sprintf( __( '%1$s: "%2$s" is not an option Encore Website may update; skipped.', 'encore-website' ), $name, $option ) );
 				continue;
 			}
 
@@ -415,16 +415,16 @@ final class Drift_Website_Sync_Engine {
 
 		if ( ! post_type_exists( $entity['post_type'] ) ) {
 			/* translators: 1: label, 2: post type. */
-			$message = sprintf( __( '%1$s: post type "%2$s" is not registered.', 'drift-website' ), $label, $entity['post_type'] );
-			Drift_Website_Log::error( $message );
+			$message = sprintf( __( '%1$s: post type "%2$s" is not registered.', 'encore-website' ), $label, $entity['post_type'] );
+			Encore_Website_Log::error( $message );
 			return [ 'ok' => false, 'message' => $message ];
 		}
 
 		if ( is_wp_error( $records ) || ! is_array( $records ) ) {
-			$error = is_wp_error( $records ) ? $records->get_error_message() : __( 'not fetched', 'drift-website' );
-			Drift_Website_Log::error( $label . ': ' . $error . ' — existing items left as they are.' );
+			$error = is_wp_error( $records ) ? $records->get_error_message() : __( 'not fetched', 'encore-website' );
+			Encore_Website_Log::error( $label . ': ' . $error . ' — existing items left as they are.' );
 			/* translators: 1: label, 2: error. */
-			return [ 'ok' => false, 'message' => sprintf( __( '%1$s: failed — %2$s (nothing changed).', 'drift-website' ), $label, $error ) ];
+			return [ 'ok' => false, 'message' => sprintf( __( '%1$s: failed — %2$s (nothing changed).', 'encore-website' ), $label, $error ) ];
 		}
 
 		$existing = self::existing_posts( $entity['post_type'] );
@@ -435,7 +435,7 @@ final class Drift_Website_Sync_Engine {
 		foreach ( $records as $record ) {
 			$record_id = (string) $record['id'];
 			$fields    = (array) ( $record['fields'] ?? [] );
-			$title     = Drift_Website_Media::plain( $fields[ $entity['title'] ] ?? '' );
+			$title     = Encore_Website_Media::plain( $fields[ $entity['title'] ] ?? '' );
 
 			if ( '' === $title ) {
 				continue; // Blank row — no unnamed posts.
@@ -447,8 +447,8 @@ final class Drift_Website_Sync_Engine {
 			$row++;
 			$seen[ $record_id ] = true;
 
-			$order = 'row' === $entity['order'] ? $row : (int) Drift_Website_Media::plain( $fields[ $entity['order'] ] ?? 0 );
-			$hash  = md5( (string) wp_json_encode( [ DRIFT_WEBSITE_VERSION, $title, $order, self::hashable( $fields ), $entity['fields'] ] ) );
+			$order = 'row' === $entity['order'] ? $row : (int) Encore_Website_Media::plain( $fields[ $entity['order'] ] ?? 0 );
+			$hash  = md5( (string) wp_json_encode( [ ENCORE_WEBSITE_VERSION, $title, $order, self::hashable( $fields ), $entity['fields'] ] ) );
 			$post  = $existing[ $record_id ] ?? null;
 
 			if ( ! $force && $post && in_array( $post->post_status, [ 'publish', 'future' ], true ) && get_post_meta( $post->ID, self::META_HASH, true ) === $hash ) {
@@ -491,7 +491,7 @@ final class Drift_Website_Sync_Engine {
 			'ok'      => true,
 			'message' => sprintf(
 				/* translators: 1: label, 2: live count, 3: added, 4: updated, 5: removed. */
-				__( '%1$s: %2$d live (%3$d added, %4$d updated, %5$d removed).', 'drift-website' ),
+				__( '%1$s: %2$d live (%3$d added, %4$d updated, %5$d removed).', 'encore-website' ),
 				$label,
 				count( $seen ),
 				$counts['added'],
@@ -516,7 +516,7 @@ final class Drift_Website_Sync_Engine {
 		];
 
 		if ( $entity['slug'] ) {
-			$slug = sanitize_title( Drift_Website_Media::plain( $fields[ $entity['slug'] ] ?? '' ) );
+			$slug = sanitize_title( Encore_Website_Media::plain( $fields[ $entity['slug'] ] ?? '' ) );
 			if ( '' !== $slug ) {
 				$postarr['post_name'] = $slug;
 			}
@@ -540,8 +540,8 @@ final class Drift_Website_Sync_Engine {
 
 			if ( in_array( $to, [ 'content', 'excerpt' ], true ) ) {
 				$postarr[ 'post_' . $to ] = 'html' === $field['type'] && 'content' === $to
-					? Drift_Website_Media::markdown_to_html( Drift_Website_Media::plain( $raw ) )
-					: Drift_Website_Media::plain( $raw );
+					? Encore_Website_Media::markdown_to_html( Encore_Website_Media::plain( $raw ) )
+					: Encore_Website_Media::plain( $raw );
 				continue;
 			}
 
@@ -589,7 +589,7 @@ final class Drift_Website_Sync_Engine {
 		}
 
 		if ( is_wp_error( $post_id ) || ! $post_id ) {
-			Drift_Website_Log::error( sprintf( 'Could not save "%s" (%s) — %s', $title, $record_id, is_wp_error( $post_id ) ? $post_id->get_error_message() : 'unknown error' ) );
+			Encore_Website_Log::error( sprintf( 'Could not save "%s" (%s) — %s', $title, $record_id, is_wp_error( $post_id ) ? $post_id->get_error_message() : 'unknown error' ) );
 			return [ 'post_id' => 0, 'complete' => false ];
 		}
 
@@ -617,7 +617,7 @@ final class Drift_Website_Sync_Engine {
 			if ( false === $thumbnail ) {
 				delete_post_thumbnail( $post_id );
 			} else {
-				$attachment_id = Drift_Website_Media::attachment_id( $thumbnail, $post_id );
+				$attachment_id = Encore_Website_Media::attachment_id( $thumbnail, $post_id );
 				if ( $attachment_id ) {
 					set_post_thumbnail( $post_id, $attachment_id );
 				} else {
@@ -631,7 +631,7 @@ final class Drift_Website_Sync_Engine {
 				delete_post_meta( $post_id, $key );
 				continue;
 			}
-			$attachment_id = Drift_Website_Media::attachment_id( $attachment, $post_id );
+			$attachment_id = Encore_Website_Media::attachment_id( $attachment, $post_id );
 			if ( $attachment_id ) {
 				update_post_meta( $post_id, $key, $attachment_id );
 			} else {
@@ -755,10 +755,10 @@ final class Drift_Website_Sync_Engine {
 	public static function convert( $raw, string $type ) {
 		switch ( $type ) {
 			case 'html':
-				return Drift_Website_Media::markdown_to_html( Drift_Website_Media::plain( $raw ) );
+				return Encore_Website_Media::markdown_to_html( Encore_Website_Media::plain( $raw ) );
 
 			case 'date':
-				$text = Drift_Website_Media::plain( is_array( $raw ) ? ( $raw[0] ?? '' ) : $raw );
+				$text = Encore_Website_Media::plain( is_array( $raw ) ? ( $raw[0] ?? '' ) : $raw );
 				if ( '' === $text ) {
 					return '';
 				}
@@ -769,7 +769,7 @@ final class Drift_Website_Sync_Engine {
 				return $ts ? wp_date( 'Y-m-d', $ts ) : '';
 
 			case 'datetime':
-				$text = Drift_Website_Media::plain( is_array( $raw ) ? ( $raw[0] ?? '' ) : $raw );
+				$text = Encore_Website_Media::plain( is_array( $raw ) ? ( $raw[0] ?? '' ) : $raw );
 				if ( '' === $text ) {
 					return '';
 				}
@@ -784,7 +784,7 @@ final class Drift_Website_Sync_Engine {
 				}
 
 			case 'number':
-				$text = Drift_Website_Media::plain( is_array( $raw ) ? ( $raw[0] ?? '' ) : $raw );
+				$text = Encore_Website_Media::plain( is_array( $raw ) ? ( $raw[0] ?? '' ) : $raw );
 				return is_numeric( $text ) ? ( 0 + $text ) : '';
 
 			case 'bool':
@@ -793,16 +793,16 @@ final class Drift_Website_Sync_Engine {
 			case 'url':
 				// Shape check only. wp_http_validate_url() would do a DNS lookup per
 				// URL during sync and reject valid links on hosts with flaky DNS.
-				$url = esc_url_raw( Drift_Website_Media::plain( is_array( $raw ) ? ( $raw[0] ?? '' ) : $raw ), [ 'http', 'https' ] );
+				$url = esc_url_raw( Encore_Website_Media::plain( is_array( $raw ) ? ( $raw[0] ?? '' ) : $raw ), [ 'http', 'https' ] );
 				return ( $url && filter_var( $url, FILTER_VALIDATE_URL ) ) ? $url : '';
 
 			case 'email':
-				return (string) sanitize_email( Drift_Website_Media::plain( is_array( $raw ) ? ( $raw[0] ?? '' ) : $raw ) );
+				return (string) sanitize_email( Encore_Website_Media::plain( is_array( $raw ) ? ( $raw[0] ?? '' ) : $raw ) );
 
 			case 'list':
 				$list = [];
 				foreach ( is_array( $raw ) ? $raw : ( null === $raw || '' === $raw ? [] : [ $raw ] ) as $item ) {
-					$text = sanitize_text_field( Drift_Website_Media::plain( $item ) );
+					$text = sanitize_text_field( Encore_Website_Media::plain( $item ) );
 					if ( '' !== $text ) {
 						$list[] = $text;
 					}
@@ -810,14 +810,14 @@ final class Drift_Website_Sync_Engine {
 				return $list;
 
 			case 'embed':
-				return Drift_Website_Media::embed( Drift_Website_Media::plain( $raw ) );
+				return Encore_Website_Media::embed( Encore_Website_Media::plain( $raw ) );
 
 			case 'json':
 				return is_array( $raw ) ? $raw : ( null === $raw ? '' : $raw );
 
 			case 'text':
 			default:
-				return sanitize_textarea_field( Drift_Website_Media::plain( $raw ) );
+				return sanitize_textarea_field( Encore_Website_Media::plain( $raw ) );
 		}
 	}
 
@@ -829,7 +829,7 @@ final class Drift_Website_Sync_Engine {
 			if ( ! is_array( $attachment ) ) {
 				continue;
 			}
-			$id = Drift_Website_Media::attachment_id( $attachment, $parent_id );
+			$id = Encore_Website_Media::attachment_id( $attachment, $parent_id );
 			if ( $id ) {
 				$ids[] = $id;
 			} else {
@@ -869,7 +869,7 @@ final class Drift_Website_Sync_Engine {
 	/**
 	 * Clears common page caches after a sync so a published change shows
 	 * straight away. Each call is guarded; anything else can hook
-	 * `drift_website_synced`.
+	 * `encore_website_synced`.
 	 */
 	private static function purge_page_caches(): void {
 		if ( function_exists( 'rocket_clean_domain' ) ) {

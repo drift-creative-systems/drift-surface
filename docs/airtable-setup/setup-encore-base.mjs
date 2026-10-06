@@ -1,32 +1,61 @@
 #!/usr/bin/env node
 /**
- * Drift: Encore — Airtable base builder.
+ * Drift: Encore — Airtable base builder and migrator.
  *
- * Builds every table and field the Encore map expects (maps/encore.php,
- * docs/ENCORE-AIRTABLE-BASE.md) into an EMPTY base you've already created,
- * and optionally fills it with a demo band.
+ * BUILD a new base: creates every table and field the Encore map expects
+ * (maps/encore.php, docs/ENCORE-AIRTABLE-BASE.md) in an EMPTY base you've
+ * already created, and optionally fills it with a demo band.
  *
- *   AIRTABLE_TOKEN=<setup token> node setup-encore-base.mjs --base appXXXXXXXXXXXXXX [--demo velvet|hollin] [--dry-run]
+ *   AIRTABLE_TOKEN=<token> node setup-encore-base.mjs --base appXXXXXXXXXXXXXX [--demo velvet|hollin] [--dry-run]
+ *
+ * MIGRATE existing bases to the latest template: adds missing tables, fields,
+ * links, then stamps the template version. It never deletes, renames or
+ * changes the type of anything. It lists what still needs doing by hand
+ * (formulas, select options, buttons, the Interface). It's a dry run unless
+ * you add --apply.
+ *
+ *   AIRTABLE_TOKEN=<token> node setup-encore-base.mjs --migrate --all                 (every Encore base the token can see)
+ *   AIRTABLE_TOKEN=<token> node setup-encore-base.mjs --migrate --bases appA,appB     (just these)
+ *   AIRTABLE_TOKEN=<token> node setup-encore-base.mjs --migrate --all --apply         (make the changes)
  *
  * (--token also works, but the environment variable keeps the token out of
  * shell history.)
  *
- * Token: create at airtable.com/create/tokens with access to that ONE base and
- * scopes schema.bases:read, schema.bases:write, data.records:read,
- * data.records:write. It's a setup token — delete it afterwards and give the
- * website its own token without schema:write.
+ * Tokens (airtable.com/create/tokens):
+ * - Build: access to that ONE base; scopes schema.bases:read, schema.bases:write,
+ *   data.records:read, data.records:write. Delete it afterwards.
+ * - Migrate: a "Drift maintenance" token with access to every client workspace;
+ *   scopes schema.bases:read and schema.bases:write only. Your account needs
+ *   Creator (or Owner) access in each workspace to change its bases.
+ * Never give a website a token with schema:write.
  *
  * Safe to re-run: existing tables are kept, only missing fields are added,
  * and demo records are skipped for any table that already has rows.
  *
  * Needs Node 18+ (built-in fetch). No npm install.
- * Uses roughly 30–45 API calls of the base's 1,000 a month.
+ * API calls count against each base's workspace (1,000 a month on Free):
+ * a build uses roughly 30–45; a migrate uses 1 per base checked (--all
+ * checks every base the token can see), plus 1 per change and 1 for the stamp.
  *
- * Things the API can't create — finish by hand (2 minutes, listed at the end):
- * formula fields, created-time fields, deleting the default "Table 1".
+ * Things the API can't do — finish by hand (listed at the end):
+ * formula fields, created-time fields, button fields, select options on an
+ * existing field, the Interface, deleting the default "Table 1".
  */
 
 const API = process.env.AIRTABLE_API || 'https://api.airtable.com/v0';
+
+/*
+ * Template version. Bump it whenever SCHEMA changes, and add a line below.
+ * It's stamped at the end of the Site Settings table description, e.g.
+ * "… [Encore template v2]", so you can see which version a base is on.
+ *
+ *   1  First release (unstamped bases count as 1).
+ *   2  Site Settings: Live Embed, Merch Embed.
+ */
+const TEMPLATE_VERSION = 2;
+const STAMP_TABLE = 'Site Settings';
+const AUTOMATION_ONLY = ['Publish', 'Last Published']; // Site Settings fields the band never edits, so never added to the Interface.
+const MARKER = /\s*\[Encore template v(\d+)\]\s*$/;
 
 /* ── Args ─────────────────────────────────────────────────────────────── */
 const args = Object.fromEntries(
@@ -35,13 +64,35 @@ const args = Object.fromEntries(
 		return acc;
 	}, [])
 );
-const BASE = args.base;
+const MIGRATE = !!args.migrate;
+const BASE = typeof args.base === 'string' ? args.base : '';
+const BASES = typeof args.bases === 'string' ? args.bases.split(',').map((b) => b.trim()).filter(Boolean) : [];
+const ALL = !!args.all;
 const TOKEN = args.token || process.env.AIRTABLE_TOKEN;
 const DEMO = args.demo || '';
-const DRY = !!args['dry-run'];
+const DRY = !!args['dry-run'] || (MIGRATE && !args.apply);
+const BASE_ID = /^app[A-Za-z0-9]{14}$/;
 
-if (!BASE || !/^app[A-Za-z0-9]{14}$/.test(BASE) || !TOKEN) {
-	console.error('Usage: AIRTABLE_TOKEN=<setup token> node setup-encore-base.mjs --base appXXXXXXXXXXXXXX [--demo velvet|hollin] [--dry-run]');
+const USAGE = `Usage:
+  Build:    AIRTABLE_TOKEN=<token> node setup-encore-base.mjs --base appXXXXXXXXXXXXXX [--demo velvet|hollin] [--dry-run]
+  Migrate:  AIRTABLE_TOKEN=<token> node setup-encore-base.mjs --migrate (--all | --bases appA,appB | --base appA) [--apply]`;
+
+if (!TOKEN) {
+	console.error(USAGE);
+	process.exit(1);
+}
+if (MIGRATE) {
+	const targets = [BASE, ...BASES].filter(Boolean);
+	if ((!ALL && !targets.length) || targets.some((b) => !BASE_ID.test(b))) {
+		console.error(USAGE);
+		process.exit(1);
+	}
+	if (DEMO) {
+		console.error('--demo only works when building a new base, not with --migrate.');
+		process.exit(1);
+	}
+} else if (!BASE_ID.test(BASE)) {
+	console.error(USAGE);
 	process.exit(1);
 }
 if (DEMO && !['velvet', 'hollin'].includes(DEMO)) {
@@ -51,7 +102,7 @@ if (DEMO && !['velvet', 'hollin'].includes(DEMO)) {
 
 /* ── Field type helpers ───────────────────────────────────────────────── */
 const text = (name, description) => ({ name, type: 'singleLineText', ...(description ? { description } : {}) });
-const long = (name) => ({ name, type: 'multilineText' });
+const long = (name, description) => ({ name, type: 'multilineText', ...(description ? { description } : {}) });
 const rich = (name) => ({ name, type: 'richText' });
 const url = (name) => ({ name, type: 'url' });
 const email = (name) => ({ name, type: 'email' });
@@ -73,6 +124,7 @@ const multi = (name, choices) => ({ name, type: 'multipleSelects', options: { ch
 
 /* ── Schema (must match maps/encore.php) ──────────────────────────────── */
 // First field = primary field. Links are added in a second pass (they need table IDs).
+// Changing this? Bump TEMPLATE_VERSION above.
 const SCHEMA = [
 	{
 		name: 'Site Settings',
@@ -87,6 +139,8 @@ const SCHEMA = [
 			url('Instagram'), url('Facebook'), url('TikTok'), url('YouTube'), url('X'),
 			url('Spotify'), url('Apple Music'), url('Bandcamp'), url('SoundCloud'),
 			long('SEO Description'),
+			long('Live Embed', 'Optional. Paste iframe embed code (e.g. a tour-dates widget). When set, it replaces the gig list on the website.'),
+			long('Merch Embed', 'Optional. Paste iframe embed code (e.g. a Bandcamp or shop widget). When set, it replaces the merch grid on the website.'),
 			check('Publish', 'Tick to publish the website. The automation unticks it.'),
 			datetime('Last Published', 'Set by the Publish automation — do not edit.'),
 		],
@@ -160,13 +214,27 @@ const SCHEMA = [
 	},
 ];
 
+/*
+ * What the API can't create. Migrate mode checks each base for these and
+ * lists anything still to do by hand.
+ */
+const FORMULAS = {
+	Gigs: { Gig: '{Venue} & ", " & {City}' },
+	Gallery: { Title: 'IF({Caption}, {Caption}, "Photo")' },
+};
+const HAND_FIELDS = [
+	{ table: 'Enquiries', name: 'Received', type: 'createdTime', how: 'add a "Received" field (Created time)' },
+	{ table: 'Subscribers', name: 'Joined', type: 'createdTime', how: 'add a "Joined" field (Created time)' },
+	{ table: 'Site Settings', name: 'Publish website', type: 'button', how: 'add the "Publish website" button field (README Part A step 5, then Part B step 4)' },
+];
+
 /* ── API ──────────────────────────────────────────────────────────────── */
 let calls = 0;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function api(method, path, body) {
 	if (DRY && method !== 'GET') {
-		console.log(`  [dry-run] ${method} ${path}`);
+		if (!MIGRATE) console.log(`  [dry-run] ${method} ${path}`);
 		return { id: `dry_${Math.random().toString(36).slice(2, 10)}`, fields: [], records: [] };
 	}
 	for (let attempt = 0; attempt < 4; attempt++) {
@@ -192,37 +260,69 @@ async function api(method, path, body) {
 	throw new Error(`${method} ${path} kept hitting the rate limit.`);
 }
 
-const getSchema = async () => (await api('GET', `meta/bases/${BASE}/tables`)).tables || [];
+const getSchema = async (base) => (await api('GET', `meta/bases/${base}/tables`)).tables || [];
 
-/* ── Build ────────────────────────────────────────────────────────────── */
-async function buildSchema() {
-	console.log('\nReading the base…');
-	let tables = await getSchema();
+/** Every base the token can see: [{ id, name, permissionLevel }]. */
+async function listBases() {
+	const out = [];
+	let offset = '';
+	do {
+		const res = await api('GET', `meta/bases${offset ? `?offset=${encodeURIComponent(offset)}` : ''}`);
+		out.push(...(res.bases || []));
+		offset = res.offset || '';
+	} while (offset);
+	return out;
+}
+
+const isEncore = (tables) => ['Site Settings', 'Gigs', 'Releases'].every((name) => tables.some((t) => t.name === name));
+
+/** Template version stamped on a base (unstamped bases count as 1). */
+function versionOf(tables) {
+	const table = tables.find((t) => t.name === STAMP_TABLE);
+	const match = (table?.description || '').match(MARKER);
+	return match ? Number(match[1]) : 1;
+}
+
+/* ── Build / add missing ──────────────────────────────────────────────── */
+
+/**
+ * Adds every missing table, field and link to one base. Never deletes,
+ * renames or retypes anything.
+ *
+ * @return {{ tables: object[], changes: string[], siteSettingsAdded: string[] }}
+ */
+async function buildSchema(base, tables, { verbose = true } = {}) {
 	const byName = () => Object.fromEntries(tables.map((t) => [t.name, t]));
+	const changes = [];
+	const siteSettingsAdded = [];
 
 	for (const spec of SCHEMA) {
 		const existing = byName()[spec.name];
 		if (!existing) {
-			console.log(`+ Table "${spec.name}" (${spec.fields.length} fields)`);
-			const created = await api('POST', `meta/bases/${BASE}/tables`, {
+			console.log(`  + Table "${spec.name}" (${spec.fields.length} fields)`);
+			changes.push(`table ${spec.name}`);
+			const created = await api('POST', `meta/bases/${base}/tables`, {
 				name: spec.name,
 				...(spec.description ? { description: spec.description } : {}),
 				fields: spec.fields,
 			});
 			tables.push(created.id ? { ...created, name: spec.name, fields: created.fields || [] } : created);
+			if (spec.name === STAMP_TABLE) siteSettingsAdded.push(...spec.fields.map((f) => f.name).filter((n) => !AUTOMATION_ONLY.includes(n)));
 			continue;
 		}
 		const have = new Set((existing.fields || []).map((f) => f.name));
 		for (const field of spec.fields) {
 			if (!have.has(field.name)) {
-				console.log(`+ Field "${spec.name}" → "${field.name}"`);
-				await api('POST', `meta/bases/${BASE}/tables/${existing.id}/fields`, field);
+				console.log(`  + Field "${spec.name}" → "${field.name}"`);
+				changes.push(`${spec.name}.${field.name}`);
+				if (spec.name === STAMP_TABLE && !AUTOMATION_ONLY.includes(field.name)) siteSettingsAdded.push(field.name);
+				await api('POST', `meta/bases/${base}/tables/${existing.id}/fields`, field);
 			}
 		}
-		console.log(`= Table "${spec.name}" exists`);
+		if (verbose) console.log(`  = Table "${spec.name}" exists`);
 	}
 
-	if (!DRY) tables = await getSchema();
+	if (!DRY && changes.length) tables = await getSchema(base);
 
 	// Link fields, then name the automatic inverse field as the map expects.
 	for (const spec of SCHEMA.filter((s) => s.links)) {
@@ -231,27 +331,179 @@ async function buildSchema() {
 			const target = byName()[link.to];
 			if (!table || !target) continue;
 			if ((table.fields || []).some((f) => f.name === link.name)) {
-				console.log(`= Link "${spec.name}" → "${link.name}" exists`);
+				if (verbose) console.log(`  = Link "${spec.name}" → "${link.name}" exists`);
 				continue;
 			}
-			console.log(`+ Link "${spec.name}.${link.name}" ↔ "${link.to}.${link.inverse}"`);
-			const field = await api('POST', `meta/bases/${BASE}/tables/${table.id}/fields`, {
+			console.log(`  + Link "${spec.name}.${link.name}" ↔ "${link.to}.${link.inverse}"`);
+			changes.push(`link ${spec.name}.${link.name}`);
+			const field = await api('POST', `meta/bases/${base}/tables/${table.id}/fields`, {
 				name: link.name,
 				type: 'multipleRecordLinks',
 				options: { linkedTableId: target.id },
 			});
 			if (DRY) continue;
-			tables = await getSchema();
+			tables = await getSchema(base);
 			const inverse = (byName()[link.to].fields || []).find(
 				(f) => f.type === 'multipleRecordLinks' && f.options?.inverseLinkFieldId === field.id
 			);
 			if (inverse && inverse.name !== link.inverse) {
-				await api('PATCH', `meta/bases/${BASE}/tables/${target.id}/fields/${inverse.id}`, { name: link.inverse });
+				await api('PATCH', `meta/bases/${base}/tables/${target.id}/fields/${inverse.id}`, { name: link.inverse });
 			}
 		}
 	}
 
-	return DRY ? tables : await getSchema();
+	if (!DRY && changes.length) tables = await getSchema(base);
+	return { tables, changes, siteSettingsAdded };
+}
+
+/**
+ * What the API can't fix in one base: formulas still to convert, fields of
+ * the wrong type, missing select options, hand-made fields. Only looks at
+ * fields that exist (missing ones are created correctly by buildSchema).
+ *
+ * @return {string[]} One line per job.
+ */
+function audit(tables) {
+	const jobs = [];
+	const byName = Object.fromEntries(tables.map((t) => [t.name, t]));
+
+	for (const spec of SCHEMA) {
+		const table = byName[spec.name];
+		if (!table) continue;
+		const fields = Object.fromEntries((table.fields || []).map((f) => [f.name, f]));
+
+		for (const want of spec.fields) {
+			const have = fields[want.name];
+			if (!have) continue;
+			const formula = FORMULAS[spec.name]?.[want.name];
+			if (formula) {
+				if (have.type !== 'formula') jobs.push(`${spec.name} → "${want.name}": Edit field → Formula: ${formula}`);
+				continue;
+			}
+			if (have.type !== want.type) {
+				const hint = want.type === 'multilineText' && have.type === 'richText' ? ' (turn rich text formatting off)' : '';
+				jobs.push(`${spec.name} → "${want.name}" is ${have.type}, should be ${want.type}${hint}. Change it by hand.`);
+				continue;
+			}
+			if (want.options?.choices) {
+				const names = new Set((have.options?.choices || []).map((c) => c.name));
+				const missing = want.options.choices.map((c) => c.name).filter((n) => !names.has(n));
+				if (missing.length) jobs.push(`${spec.name} → "${want.name}": add option(s) ${missing.map((n) => `"${n}"`).join(', ')}`);
+			}
+		}
+
+		for (const link of spec.links || []) {
+			const have = fields[link.name];
+			if (have && have.type !== 'multipleRecordLinks') jobs.push(`${spec.name} → "${link.name}" should link to ${link.to}. Change it by hand.`);
+		}
+	}
+
+	for (const hand of HAND_FIELDS) {
+		const table = byName[hand.table];
+		if (table && !(table.fields || []).some((f) => f.name === hand.name && f.type === hand.type)) jobs.push(`${hand.table}: ${hand.how}`);
+	}
+
+	if (tables.some((t) => t.name === 'Table 1')) jobs.push('Delete the empty "Table 1" (if it is empty)');
+
+	return jobs;
+}
+
+/** Writes "[Encore template vN]" onto the Site Settings table description. */
+async function stamp(base, tables) {
+	const table = tables.find((t) => t.name === STAMP_TABLE);
+	if (!table) return;
+	const spec = SCHEMA.find((s) => s.name === STAMP_TABLE);
+	const current = (table.description || '').replace(MARKER, '').trim() || spec.description || '';
+	await api('PATCH', `meta/bases/${base}/tables/${table.id}`, {
+		description: `${current} [Encore template v${TEMPLATE_VERSION}]`.trim(),
+	});
+}
+
+/* ── Migrate ──────────────────────────────────────────────────────────── */
+
+/**
+ * Brings one base up to the current template.
+ *
+ * @return {{ base: string, name: string, status: string, from?: number, changes?: number, jobs?: number }}
+ */
+async function migrateBase(base, name, permission) {
+	console.log(`\n▸ ${name} (${base})`);
+	const tables = await getSchema(base);
+
+	if (!isEncore(tables)) {
+		console.log('  Not an Encore base — skipped.');
+		return { base, name, status: 'not Encore' };
+	}
+
+	const from = versionOf(tables);
+	if (from > TEMPLATE_VERSION) {
+		console.log(`  On template v${from}, newer than this script (v${TEMPLATE_VERSION}). Use the latest docs/airtable-setup — skipped.`);
+		return { base, name, status: 'newer', from };
+	}
+
+	if (!DRY && permission && permission !== 'create') {
+		console.log(`  Your access is "${permission}" — Creator is needed to change fields. Skipped.`);
+		return { base, name, status: 'no access', from };
+	}
+
+	const result = await buildSchema(base, tables, { verbose: false });
+	const jobs = audit(result.tables);
+	if (result.siteSettingsAdded.length) {
+		jobs.push(
+			`Interface → Publish page: show ${result.siteSettingsAdded.map((f) => `"${f}"`).join(', ')}, set to Editable, then Publish the interface (README Part A step 6)`
+		);
+	}
+
+	if (from < TEMPLATE_VERSION || result.changes.length) {
+		await stamp(base, result.tables);
+		console.log(`  Template v${from} → v${TEMPLATE_VERSION}${DRY ? ' (dry run)' : ''}, ${result.changes.length} change(s)`);
+	} else {
+		console.log(`  Up to date (v${from}), nothing to add.`);
+	}
+
+	if (jobs.length) {
+		console.log('  To do by hand:');
+		jobs.forEach((job) => console.log(`    - ${job}`));
+	}
+
+	return { base, name, status: DRY ? 'checked' : 'done', from, changes: result.changes.length, jobs: jobs.length };
+}
+
+async function migrate() {
+	console.log(`Drift: Encore migrate → template v${TEMPLATE_VERSION}`);
+	console.log(DRY ? 'DRY RUN — nothing will change. Add --apply to make these changes.' : 'APPLYING changes.');
+
+	let targets;
+	if (ALL) {
+		const bases = await listBases();
+		console.log(`The token can see ${bases.length} base(s).`);
+		targets = bases.map((b) => ({ id: b.id, name: b.name, permission: b.permissionLevel }));
+	} else {
+		targets = [...new Set([BASE, ...BASES].filter(Boolean))].map((id) => ({ id, name: id, permission: '' }));
+	}
+
+	const results = [];
+	for (const target of targets) {
+		try {
+			results.push(await migrateBase(target.id, target.name, target.permission));
+		} catch (err) {
+			console.log(`  ✖ ${err.message}`);
+			results.push({ base: target.id, name: target.name, status: 'error' });
+		}
+	}
+
+	const encore = results.filter((r) => r.status !== 'not Encore');
+	console.log(`\nSummary (${calls} API calls):`);
+	for (const r of encore) {
+		const detail = r.changes === undefined ? '' : ` — v${r.from}, ${r.changes} change(s), ${r.jobs} to do by hand`;
+		console.log(`  ${r.status.padEnd(9)} ${r.name} (${r.base})${detail}`);
+	}
+	if (!encore.length) console.log('  No Encore bases found.');
+	const skipped = results.length - encore.length;
+	if (skipped) console.log(`  (${skipped} non-Encore base(s) ignored)`);
+	if (DRY && encore.some((r) => r.changes)) console.log('\nRun again with --apply to make these changes.');
+
+	return results.some((r) => r.status === 'error') ? 1 : 0;
 }
 
 /* ── Demo content ─────────────────────────────────────────────────────── */
@@ -445,12 +697,17 @@ function clean(obj) {
 
 /* ── Run ──────────────────────────────────────────────────────────────── */
 try {
-	console.log(`Drift: Encore base builder → ${BASE}${DRY ? ' (dry run)' : ''}`);
-	const tables = await buildSchema();
-	if (DEMO) await seed(tables);
+	if (MIGRATE) {
+		process.exitCode = await migrate();
+	} else {
+		console.log(`Drift: Encore base builder → ${BASE} (template v${TEMPLATE_VERSION})${DRY ? ' (dry run)' : ''}`);
+		console.log('\nReading the base…');
+		const result = await buildSchema(BASE, await getSchema(BASE));
+		await stamp(BASE, result.tables);
+		if (DEMO) await seed(result.tables);
 
-	console.log(`\nDone — ${calls} API calls.`);
-	console.log(`
+		console.log(`\nDone — ${calls} API calls.`);
+		console.log(`
 Finish by hand in Airtable (the API can't do these):
   1. Gigs → "Gig" field → Edit field → Formula:      {Venue} & ", " & {City}
   2. Gallery → "Title" field → Edit field → Formula:   IF({Caption}, {Caption}, "Photo")
@@ -458,8 +715,9 @@ Finish by hand in Airtable (the API can't do these):
   4. Delete the empty "Table 1" that came with the base.
   5. Site Settings: add your Logo / Logo (Light) images (demo leaves them blank so the site shows the name in type).
   6. Videos: add 2–3 rows with real YouTube or Vimeo links, tick Show on Site (and Featured on one).
-Then: the Publish automation and the Interface — see docs/airtable-setup/README.md.
+Then: the Publish button and the Interface — see docs/airtable-setup/README.md.
 `);
+	}
 } catch (err) {
 	console.error(`\n✖ ${err.message}\n(${calls} API calls made before the error.)`);
 	process.exit(1);

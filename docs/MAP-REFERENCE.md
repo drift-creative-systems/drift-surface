@@ -79,6 +79,7 @@ The `'Field' => 'content'` shorthand also works; the type is then inferred.
 | `email` | validated email |
 | `list` | array of strings (multi-select, lookups) |
 | `json` | raw value |
+| `embed` | `<iframe>` tags only, `https` sources only; everything else (scripts, `srcdoc`, surrounding text) is stripped. Use with a Long text field, rich text **off** |
 | `image` | attachment ID (first attachment) |
 | `gallery` | array of attachment IDs |
 | `link` | array of WordPress post IDs for linked records, in Airtable's order. Read with `drift_linked_posts( $post_id, 'key' )` |

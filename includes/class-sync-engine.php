@@ -3,8 +3,7 @@
  * class-sync-engine.php — one-way Airtable → WordPress sync, driven entirely
  * by the product map.
  *
- * Generalised from vision-website's Team sync (the pattern every one of its
- * five per-table sync classes repeated). The rules carried over unchanged:
+ * The rules:
  *
  *   - Fetch every page of a table, or nothing: a failed page aborts that
  *     table, never acts on a partial list (which would bin everything on the
@@ -126,16 +125,18 @@ final class Drift_Website_Sync_Engine {
 			set_transient( self::CACHE, $records, 30 * MINUTE_IN_SECONDS );
 		}
 
+		$missing = (array) ( $records['__missing'] ?? [] );
+
 		// Settings record.
 		if ( $map['settings'] && $map['settings']['table'] ) {
-			$result     = self::sync_settings( $map, $records['__settings'] ?? null );
+			$result     = self::sync_settings( $map, $records['__settings'] ?? null, (array) ( $missing['__settings'] ?? [] ) );
 			$messages[] = $result['message'];
 			$ok         = $ok && $result['ok'];
 		}
 
 		// Entities.
 		foreach ( $map['entities'] as $key => $entity ) {
-			$result     = self::sync_entity( $entity, $records[ $key ] ?? null, $force );
+			$result     = self::sync_entity( $entity, $records[ $key ] ?? null, $force, (array) ( $missing[ $key ] ?? [] ) );
 			$messages[] = $result['message'];
 			$ok         = $ok && $result['ok'];
 		}
@@ -214,45 +215,98 @@ final class Drift_Website_Sync_Engine {
 	 * Every table the map needs. A failed table is stored as a WP_Error so
 	 * its sync is skipped (existing posts left alone) while others continue.
 	 *
-	 * @return array<string, array|WP_Error|null> Keyed by entity key, plus '__settings'.
+	 * A mapped field missing from the base (e.g. a base not yet migrated to
+	 * the latest template) is skipped, not fatal: its name goes in
+	 * '__missing' and the sync keeps that field's current WordPress values.
+	 *
+	 * @return array<string, mixed> Keyed by entity key, plus '__settings' and '__missing'.
 	 */
 	private static function fetch( array $map ): array {
-		$out = [];
+		$out = [ '__missing' => [] ];
 
 		if ( $map['settings'] && $map['settings']['table'] ) {
 			$fields = array_keys( $map['settings']['fields'] );
 			if ( ! empty( $map['publish']['field'] ) ) {
 				$fields[] = (string) $map['publish']['field'];
 			}
-			$out['__settings'] = Drift_Website_Airtable::list_records(
-				$map['settings']['table'],
-				[ 'maxRecords' => 1, 'fields' => array_values( array_unique( $fields ) ) ]
+			$out['__settings'] = self::unwrap(
+				Drift_Website_Airtable::list_records_lenient(
+					$map['settings']['table'],
+					[ 'maxRecords' => 1, 'fields' => array_values( array_unique( $fields ) ) ]
+				),
+				'__settings',
+				$out['__missing']
 			);
 		}
 
 		foreach ( $map['entities'] as $key => $entity ) {
 			usleep( Drift_Website_Airtable::THROTTLE_US );
-			$out[ $key ] = Drift_Website_Airtable::list_records(
-				$entity['table'],
-				[
-					'view'            => $entity['view'],
-					'filterByFormula' => $entity['filter'],
-					'sort'            => $entity['sort'],
-					'fields'          => Drift_Website_Map::requested_fields( $entity ),
-				]
+			$out[ $key ] = self::unwrap(
+				Drift_Website_Airtable::list_records_lenient(
+					$entity['table'],
+					[
+						'view'            => $entity['view'],
+						'filterByFormula' => $entity['filter'],
+						'sort'            => $entity['sort'],
+						'fields'          => Drift_Website_Map::requested_fields( $entity ),
+					],
+					Drift_Website_Map::structural_fields( $entity )
+				),
+				$key,
+				$out['__missing']
 			);
 		}
 
 		return $out;
 	}
 
+	/**
+	 * Records from a list_records_lenient() result, noting skipped fields.
+	 *
+	 * @param array|WP_Error $result  Lenient list result.
+	 * @param string         $key     Entity key or '__settings'.
+	 * @param array          $missing Collected missing fields, by key.
+	 * @return array|WP_Error
+	 */
+	private static function unwrap( $result, string $key, array &$missing ) {
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+		if ( $result['missing'] ) {
+			$missing[ $key ] = $result['missing'];
+		}
+		return $result['records'];
+	}
+
+	/**
+	 * Log line and status message for fields skipped because Airtable
+	 * doesn't have them. '' when none were skipped.
+	 *
+	 * @param string   $label   Table label.
+	 * @param string[] $missing Airtable field names.
+	 */
+	private static function missing_note( string $label, array $missing ): string {
+		if ( ! $missing ) {
+			return '';
+		}
+		$note = sprintf(
+			/* translators: 1: table, 2: comma-separated field names. */
+			__( '%1$s: field(s) not in Airtable, skipped and existing values kept: %2$s. Add them to the base (Drift → Connection → Check connection lists everything missing).', 'drift-website' ),
+			$label,
+			'"' . implode( '", "', $missing ) . '"'
+		);
+		Drift_Website_Log::warning( $note );
+		return ' ' . $note;
+	}
+
 	/* ── Settings table → option ─────────────────────────────────────── */
 
 	/**
-	 * @param array             $map     Product map.
+	 * @param array               $map     Product map.
 	 * @param array|WP_Error|null $records Fetched settings records.
+	 * @param string[]            $missing Fields Airtable doesn't have; their stored values are kept.
 	 */
-	private static function sync_settings( array $map, $records ): array {
+	private static function sync_settings( array $map, $records, array $missing = [] ): array {
 		$spec  = $map['settings'];
 		$label = $spec['table'];
 
@@ -278,6 +332,13 @@ final class Drift_Website_Sync_Engine {
 			$key = (string) $field['to'];
 			$raw = $fields[ $name ] ?? null;
 
+			if ( in_array( $name, $missing, true ) ) {
+				if ( array_key_exists( $key, $previous ) ) {
+					$values[ $key ] = $previous[ $key ];
+				}
+				continue;
+			}
+
 			if ( 'image' === $field['type'] ) {
 				$first          = is_array( $raw ) && is_array( $raw[0] ?? null ) ? $raw[0] : null;
 				$id             = $first ? Drift_Website_Media::attachment_id( $first ) : 0;
@@ -299,7 +360,7 @@ final class Drift_Website_Sync_Engine {
 		update_option( $spec['option'], $values, true );
 
 		/* translators: %s: table. */
-		return [ 'ok' => true, 'message' => sprintf( __( '%s: updated.', 'drift-website' ), $label ) ];
+		return [ 'ok' => true, 'message' => sprintf( __( '%s: updated.', 'drift-website' ), $label ) . self::missing_note( $label, $missing ) ];
 	}
 
 	/* ── Entity table → posts ────────────────────────────────────────── */
@@ -308,9 +369,15 @@ final class Drift_Website_Sync_Engine {
 	 * @param array               $entity  Entity spec from the map.
 	 * @param array|WP_Error|null $records Fetched records.
 	 * @param bool                $force   Ignore hashes.
+	 * @param string[]            $missing Fields Airtable doesn't have. They're taken out of the
+	 *                                     spec, so save_post() leaves their current values alone.
 	 */
-	private static function sync_entity( array $entity, $records, bool $force ): array {
+	private static function sync_entity( array $entity, $records, bool $force, array $missing = [] ): array {
 		$label = (string) ( $entity['register']['label'] ?? $entity['table'] );
+
+		// The spec is part of the hash, so this re-saves each post once now and
+		// again when the field reappears, which fills in its values.
+		$entity['fields'] = array_diff_key( $entity['fields'], array_flip( $missing ) );
 
 		if ( ! post_type_exists( $entity['post_type'] ) ) {
 			/* translators: 1: label, 2: post type. */
@@ -396,7 +463,7 @@ final class Drift_Website_Sync_Engine {
 				$counts['added'],
 				$counts['updated'],
 				$counts['removed']
-			),
+			) . self::missing_note( $label, $missing ),
 		];
 	}
 
@@ -707,6 +774,9 @@ final class Drift_Website_Sync_Engine {
 					}
 				}
 				return $list;
+
+			case 'embed':
+				return Drift_Website_Media::embed( Drift_Website_Media::plain( $raw ) );
 
 			case 'json':
 				return is_array( $raw ) ? $raw : ( null === $raw ? '' : $raw );

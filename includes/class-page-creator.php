@@ -3,8 +3,7 @@
  * class-page-creator.php — the Site Setup Wizard's engine: creates a
  * product's standard pages with their page-builder rows pre-filled.
  *
- * Ported from vision-website's TTNG_Setup_Page_Creator / _Ajax_Handler. The
- * page list now comes from the product map ('pages'), so the same wizard
+ * The page list comes from the product map ('pages'), so the same wizard
  * sets up an Encore band site or any later Drift product.
  *
  * Page definition (map 'pages' entries):

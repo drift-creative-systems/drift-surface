@@ -2,8 +2,7 @@
 /**
  * class-settings.php — the plugin's one settings option.
  *
- * Replaces the credentials vision-website used to borrow from the third-party
- * cruise plugin. Everything lives in one option (self::OPTION), secrets
+ * Connection settings. Everything lives in one option (self::OPTION), secrets
  * encrypted by Drift_Website_Crypto.
  *
  * wp-config.php overrides (handy for local/staging, and they win over the

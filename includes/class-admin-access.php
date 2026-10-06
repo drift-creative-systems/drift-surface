@@ -2,7 +2,7 @@
 /**
  * class-admin-access.php — agency users and admin menu hiding.
  *
- * Ported from Bonsai's vision-website plugin. Replaces White Label CMS's "hide menus from everyone except the WLCMS
+ * Replaces White Label CMS's "hide menus from everyone except the WLCMS
  * admin" feature, which was tied to user ID 1 — not safe across a network
  * where user 1 might be a client, or not exist.
  *

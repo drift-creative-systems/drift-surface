@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Drift_Website_Map {
 
 	/** Field types the engine understands. */
-	const TYPES = [ 'text', 'html', 'date', 'datetime', 'number', 'bool', 'url', 'email', 'image', 'gallery', 'link', 'list', 'json' ];
+	const TYPES = [ 'text', 'html', 'date', 'datetime', 'number', 'bool', 'url', 'email', 'image', 'gallery', 'link', 'list', 'json', 'embed' ];
 
 	/** @var array|null */
 	private static $current = null;
@@ -199,6 +199,31 @@ final class Drift_Website_Map {
 		}
 		if ( ! empty( $entity['order'] ) && 'row' !== $entity['order'] ) {
 			$fields[] = (string) $entity['order'];
+		}
+		return array_values( array_unique( $fields ) );
+	}
+
+	/**
+	 * The fields an entity can't sync without: title, slug, status field,
+	 * order and sort fields. The sync never drops these when Airtable says
+	 * a field is missing (dropping the status field would bin every row).
+	 *
+	 * @return string[]
+	 */
+	public static function structural_fields( array $entity ): array {
+		$fields = [];
+		foreach ( [ 'title', 'slug', 'status_field' ] as $key ) {
+			if ( ! empty( $entity[ $key ] ) ) {
+				$fields[] = (string) $entity[ $key ];
+			}
+		}
+		if ( ! empty( $entity['order'] ) && 'row' !== $entity['order'] ) {
+			$fields[] = (string) $entity['order'];
+		}
+		foreach ( (array) $entity['sort'] as $sort ) {
+			if ( ! empty( $sort['field'] ) ) {
+				$fields[] = (string) $sort['field'];
+			}
 		}
 		return array_values( array_unique( $fields ) );
 	}

@@ -2,7 +2,7 @@
 /**
  * class-admin-page.php — the one "Drift" admin screen.
  *
- * Same shell as vision-website (left-hand tabs, one page load per tab, other
+ * The Drift admin shell (left-hand tabs, one page load per tab, other
  * code adds tabs via the `drift_website_admin_tabs` filter):
  *
  *   Connection (10)   Airtable base + token, product map, publish webhook.

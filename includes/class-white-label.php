@@ -2,7 +2,7 @@
 /**
  * class-white-label.php — Drift admin branding and login screen.
  *
- * Ported from Bonsai's vision-website plugin. Replaces the parts of White
+ * Replaces the parts of White
  * Label CMS we actually use, as a "White Label" tab in the Drift screen (added via the
  * `drift_website_admin_tabs` filter, same as the theme's Site Settings tab):
  *

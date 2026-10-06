@@ -93,11 +93,12 @@ final class Drift_Website_Airtable {
 			$message = is_array( $decoded ) && isset( $decoded['error'] )
 				? ( is_array( $decoded['error'] ) ? (string) ( $decoded['error']['message'] ?? $decoded['error']['type'] ?? '' ) : (string) $decoded['error'] )
 				: '';
+			$type    = is_array( $decoded ) && is_array( $decoded['error'] ?? null ) ? (string) ( $decoded['error']['type'] ?? '' ) : '';
 			return new WP_Error(
 				'drift_airtable_http',
 				/* translators: 1: HTTP status, 2: Airtable's message. */
 				trim( sprintf( __( 'Airtable returned HTTP %1$d. %2$s', 'drift-website' ), $code, $message ) ),
-				[ 'status' => $code ]
+				[ 'status' => $code, 'type' => $type, 'message' => $message ]
 			);
 		}
 
@@ -152,6 +153,55 @@ final class Drift_Website_Airtable {
 		} while ( '' !== $offset && $pages < self::MAX_PAGES && empty( $args['maxRecords'] ) );
 
 		return $records;
+	}
+
+	/**
+	 * list_records(), but a field Airtable doesn't know (deleted, renamed, or
+	 * not added to this base yet) is dropped from the request and the call
+	 * retried, rather than failing the whole table. Each retry is one more
+	 * API call, and only happens while a field is missing.
+	 *
+	 * Fields in $protected are never dropped: without them the rows can't be
+	 * read correctly (title, status field, sort), so the table fails as
+	 * before and its posts are left alone.
+	 *
+	 * @param string   $table     Table name or ID.
+	 * @param array    $args      As list_records(); 'fields' should be set.
+	 * @param string[] $protected Fields that must exist.
+	 * @return array{records: array, missing: string[]}|WP_Error
+	 */
+	public static function list_records_lenient( string $table, array $args, array $protected = [] ) {
+		$missing = [];
+
+		for ( $attempt = 0; $attempt <= 10; $attempt++ ) {
+			$records = self::list_records( $table, $args );
+			if ( ! is_wp_error( $records ) ) {
+				return [ 'records' => $records, 'missing' => $missing ];
+			}
+
+			$field = self::unknown_field( $records );
+			if ( '' === $field || in_array( $field, $protected, true ) || ! in_array( $field, (array) ( $args['fields'] ?? [] ), true ) ) {
+				return $records;
+			}
+
+			$missing[]      = $field;
+			$args['fields'] = array_values( array_diff( (array) $args['fields'], [ $field ] ) );
+			usleep( self::THROTTLE_US );
+		}
+
+		return $records;
+	}
+
+	/**
+	 * The field name from Airtable's 422 UNKNOWN_FIELD_NAME error
+	 * ('Unknown field name: "Live Embed"'), or '' for any other error.
+	 */
+	private static function unknown_field( WP_Error $error ): string {
+		$data = (array) $error->get_error_data();
+		if ( 422 !== (int) ( $data['status'] ?? 0 ) || 'UNKNOWN_FIELD_NAME' !== ( $data['type'] ?? '' ) ) {
+			return '';
+		}
+		return preg_match( '/"(.+)"/', (string) ( $data['message'] ?? '' ), $m ) ? stripcslashes( $m[1] ) : '';
 	}
 
 	/**

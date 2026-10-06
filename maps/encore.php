@@ -73,6 +73,8 @@ return [
 			'Bandcamp'         => [ 'to' => 'bandcamp', 'type' => 'url' ],
 			'SoundCloud'       => [ 'to' => 'soundcloud', 'type' => 'url' ],
 			'SEO Description'  => [ 'to' => 'seo_description', 'type' => 'text' ],
+			'Live Embed'       => [ 'to' => 'live_embed', 'type' => 'embed' ],  // Replaces the synced gig list when set.
+			'Merch Embed'      => [ 'to' => 'merch_embed', 'type' => 'embed' ], // Replaces the synced merch grid when set.
 		],
 	],
 

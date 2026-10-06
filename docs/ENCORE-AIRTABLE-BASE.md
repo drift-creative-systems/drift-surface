@@ -32,6 +32,8 @@ Fields marked *optional* can be left out of the template. Every field is still r
 | Instagram / Facebook / TikTok / YouTube / X | URL | One field each |
 | Spotify / Apple Music / Bandcamp / SoundCloud | URL | Artist profile links |
 | SEO Description | Long text | ~155 characters |
+| Live Embed | Long text, rich text **off** | *Optional.* Iframe embed code for a tour-dates widget. When set, it replaces the gig list on every gigs module. Scripts are stripped; only `<iframe>` with an `https` source gets through |
+| Merch Embed | Long text, rich text **off** | *Optional.* Iframe embed code for a store widget (Bandcamp, Shopify and so on). When set, it replaces the merch grid. Same rules as Live Embed |
 | **Publish** | Checkbox | Ticked by the client to publish; the automation unticks it |
 | **Last Published** | Date, include time (GMT) | Written by the automation; don't edit |
 

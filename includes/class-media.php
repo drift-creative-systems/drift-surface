@@ -3,7 +3,7 @@
  * class-media.php — Airtable attachments into the media library, and
  * Airtable rich text into safe HTML.
  *
- * Ported from vision-website's Vision_Website_Vision. The sideload is keyed by
+ * The sideload is keyed by
  * Airtable's stable attachment ID, never its URL: attachment URLs are signed,
  * change on every API response and expire a couple of hours after issue, so
  * hotlinking them breaks pages and page caches.
@@ -173,6 +173,42 @@ final class Drift_Website_Media {
 		}
 
 		return wpautop( implode( "\n", $html ) );
+	}
+
+	/**
+	 * Iframe-only embed code (store widgets, tour-date players) from an
+	 * Airtable Long text field. Everything except <iframe> is stripped, so a
+	 * pasted <script> widget comes through as nothing rather than running on
+	 * the site. Only https sources survive, and srcdoc is never allowed (it
+	 * would run in the site's own origin). Text around the iframes is dropped.
+	 */
+	public static function embed( string $code ): string {
+		$allowed = [
+			'iframe' => [
+				'src'             => true,
+				'title'           => true,
+				'width'           => true,
+				'height'          => true,
+				'style'           => true,
+				'allow'           => true,
+				'allowfullscreen' => true,
+				'frameborder'     => true,
+				'scrolling'       => true,
+				'loading'         => true,
+				'referrerpolicy'  => true,
+				'name'            => true,
+			],
+		];
+
+		// With https as the only protocol, an http:// src is reduced to //…
+		// by kses and then fails the https match below.
+		$html = wp_kses( $code, $allowed, [ 'https' ] );
+
+		if ( ! preg_match_all( '~<iframe\b[^>]*\bsrc="https://[^"]+"[^>]*>.*?</iframe>~is', $html, $m ) ) {
+			return '';
+		}
+
+		return implode( "\n", $m[0] );
 	}
 
 	/**

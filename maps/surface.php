@@ -2,15 +2,14 @@
 /**
  * maps/surface.php — Surface (band & artist websites).
  *
- * The contract between the data source (a Drift: Surface Hub, or the Surface
- * Airtable template base) and the Encore theme. Table and field names here
- * must match the source exactly (the Connection tab's "Check connection"
- * compares them). The full base spec, field types included, is
- * docs/SURFACE-AIRTABLE-BASE.md, and the hub's is drift-hub/schemas/surface.php.
- * Keep all three in step.
+ * The contract between the Drift: Surface Hub and the Surface theme. Table
+ * and field names here must match the hub's schema exactly
+ * (drift-hub/schemas/surface.php; the Connection tab's "Check connection"
+ * compares them). Keep both in step.
  *
- * Post types, taxonomies and the settings option keep their encore_* names:
- * the Encore theme reads them directly.
+ * Post types (surface_*), taxonomies (surface_*) and the settings option
+ * (surface_site_settings) are the Surface theme's contract: it queries them
+ * directly, so rename them only together with the theme.
  *
  * Map reference: docs/MAP-REFERENCE.md.
  *
@@ -25,12 +24,12 @@ $placeholder = Drift_Surface_Page_Creator::IMAGE_PLACEHOLDER;
 
 return [
 	'label'              => 'Surface',
-	'description'        => 'Band and artist websites — gigs, releases, members, media, press and merch, managed in a Drift: Surface Hub or Airtable.',
+	'description'        => 'Band and artist websites — gigs, releases, members, media, press and merch, managed in a Drift: Surface Hub.',
 	'page_builder_field' => 'page_builder',
 
 	/*
-	 * The settings row's "Last Published" is stamped by the Publish
-	 * automation; the daily check compares it to the last synced value.
+	 * The settings row's "Last Published" is stamped by the hub's Publish
+	 * button; the daily check compares it to the last synced value.
 	 */
 	'publish'            => [ 'field' => 'Last Published' ],
 
@@ -41,15 +40,15 @@ return [
 	 * ship together.
 	 */
 	'theme'              => [
-		'slug' => 'encore-theme',
-		'name' => 'Encore',
-		'zip'  => 'https://github.com/drift-creative-systems/encore-theme/releases/latest/download/encore-theme.zip',
+		'slug' => 'surface-theme',
+		'name' => 'Drift: Surface Theme',
+		'zip'  => 'https://github.com/drift-creative-systems/surface-theme/releases/latest/download/surface-theme.zip',
 	],
 
 	/* ── One-row table → drift_surface_setting( key ) ───────────────────────── */
 	'settings'           => [
 		'table'  => 'Site Settings',
-		'option' => 'encore_site_settings',
+		'option' => 'surface_site_settings',
 		'fields' => [
 			'Artist Name'      => [ 'to' => 'name', 'type' => 'text', 'wp_option' => 'blogname' ],           // Also Settings → General → Site Title.
 			'Tagline'          => [ 'to' => 'tagline', 'type' => 'text', 'wp_option' => 'blogdescription' ], // Also Settings → General → Tagline.
@@ -88,7 +87,7 @@ return [
 
 		'gigs'     => [
 			'table'        => 'Gigs',
-			'post_type'    => 'encore_gig',
+			'post_type'    => 'surface_gig',
 			'register'     => [ 'label' => 'Gigs', 'singular' => 'Gig', 'public' => true, 'rewrite' => 'live', 'menu_icon' => 'dashicons-tickets-alt', 'menu_position' => 20, 'supports' => [ 'title', 'editor' ] ],
 			'title'        => 'Gig',          // Formula: {Venue} & ", " & {City}.
 			'status_field' => 'Show on Site',
@@ -109,12 +108,12 @@ return [
 
 		'releases' => [
 			'table'     => 'Releases',
-			'post_type' => 'encore_release',
+			'post_type' => 'surface_release',
 			'register'  => [ 'label' => 'Releases', 'singular' => 'Release', 'public' => true, 'rewrite' => 'music', 'menu_icon' => 'dashicons-album', 'menu_position' => 21, 'supports' => [ 'title', 'editor', 'thumbnail' ] ],
 			'title'     => 'Title',
 			'sort'      => [ [ 'field' => 'Release Date', 'direction' => 'desc' ] ],
 			'fields'    => [
-				'Type'             => [ 'to' => 'tax:encore_release_type', 'type' => 'list' ],
+				'Type'             => [ 'to' => 'tax:surface_release_type', 'type' => 'list' ],
 				'Release Date'     => [ 'to' => 'meta:release_date', 'type' => 'date' ],
 				'Artwork'          => [ 'to' => 'thumbnail', 'type' => 'image' ],
 				'Label'            => [ 'to' => 'meta:label', 'type' => 'text' ],
@@ -131,7 +130,7 @@ return [
 
 		'tracks'   => [
 			'table'     => 'Tracks',
-			'post_type' => 'encore_track',
+			'post_type' => 'surface_track',
 			'register'  => [ 'label' => 'Tracks', 'singular' => 'Track', 'public' => false, 'menu_icon' => 'dashicons-format-audio', 'menu_position' => 22, 'supports' => [ 'title', 'editor' ] ],
 			'title'     => 'Title',
 			'sort'      => [ [ 'field' => 'Track Number', 'direction' => 'asc' ] ],
@@ -148,7 +147,7 @@ return [
 
 		'members'  => [
 			'table'        => 'Members',
-			'post_type'    => 'encore_member',
+			'post_type'    => 'surface_member',
 			'register'     => [ 'label' => 'Members', 'singular' => 'Member', 'public' => false, 'menu_icon' => 'dashicons-groups', 'menu_position' => 23, 'supports' => [ 'title', 'editor', 'thumbnail', 'page-attributes' ] ],
 			'title'        => 'Name',
 			'status_field' => 'Show on Site',
@@ -177,7 +176,7 @@ return [
 
 		'photos'   => [
 			'table'        => 'Gallery',
-			'post_type'    => 'encore_photo',
+			'post_type'    => 'surface_photo',
 			'register'     => [ 'label' => 'Gallery', 'singular' => 'Photo', 'public' => false, 'menu_icon' => 'dashicons-format-gallery', 'menu_position' => 24, 'supports' => [ 'title', 'excerpt', 'thumbnail', 'page-attributes' ] ],
 			'title'        => 'Title',        // Formula: IF({Caption}, {Caption}, "Photo").
 			'status_field' => 'Show on Site',
@@ -185,14 +184,14 @@ return [
 			'fields'       => [
 				'Photo'   => [ 'to' => 'thumbnail', 'type' => 'image' ],
 				'Caption' => [ 'to' => 'excerpt', 'type' => 'text' ],
-				'Album'   => [ 'to' => 'tax:encore_album', 'type' => 'list' ],
+				'Album'   => [ 'to' => 'tax:surface_album', 'type' => 'list' ],
 				'Credit'  => [ 'to' => 'meta:credit', 'type' => 'text' ],
 			],
 		],
 
 		'videos'   => [
 			'table'        => 'Videos',
-			'post_type'    => 'encore_video',
+			'post_type'    => 'surface_video',
 			'register'     => [ 'label' => 'Videos', 'singular' => 'Video', 'public' => false, 'menu_icon' => 'dashicons-video-alt3', 'menu_position' => 25, 'supports' => [ 'title', 'thumbnail', 'page-attributes' ] ],
 			'title'        => 'Title',
 			'status_field' => 'Show on Site',
@@ -207,7 +206,7 @@ return [
 
 		'press'    => [
 			'table'        => 'Press',
-			'post_type'    => 'encore_press',
+			'post_type'    => 'surface_press',
 			'register'     => [ 'label' => 'Press', 'singular' => 'Press quote', 'public' => false, 'menu_icon' => 'dashicons-format-quote', 'menu_position' => 26, 'supports' => [ 'title', 'editor', 'thumbnail', 'page-attributes' ] ],
 			'title'        => 'Publication',
 			'status_field' => 'Show on Site',
@@ -224,7 +223,7 @@ return [
 
 		'merch'    => [
 			'table'        => 'Merch',
-			'post_type'    => 'encore_merch',
+			'post_type'    => 'surface_merch',
 			'register'     => [ 'label' => 'Merch', 'singular' => 'Merch item', 'public' => false, 'menu_icon' => 'dashicons-cart', 'menu_position' => 27, 'supports' => [ 'title', 'thumbnail', 'page-attributes' ] ],
 			'title'        => 'Item',
 			'status_field' => 'Show on Site',
@@ -239,11 +238,11 @@ return [
 	],
 
 	'taxonomies'         => [
-		'encore_release_type' => [ 'label' => 'Release types', 'singular' => 'Release type', 'object_types' => [ 'encore_release' ] ],
-		'encore_album'        => [ 'label' => 'Albums', 'singular' => 'Album', 'object_types' => [ 'encore_photo' ] ],
+		'surface_release_type' => [ 'label' => 'Release types', 'singular' => 'Release type', 'object_types' => [ 'surface_release' ] ],
+		'surface_album'        => [ 'label' => 'Albums', 'singular' => 'Album', 'object_types' => [ 'surface_photo' ] ],
 	],
 
-	/* ── Website → Airtable ─────────────────────────────────────────── */
+	/* ── Website → hub ──────────────────────────────────────────────── */
 	'forms'              => [
 		'enquiry'    => [
 			'table'    => 'Enquiries',
@@ -270,12 +269,12 @@ return [
 			],
 			'required' => [ 'email' ],
 			'email'    => [ 'email' ],
-			'notify'   => false, // Only emailed if Airtable is unreachable.
+			'notify'   => false, // Only emailed if the hub is unreachable.
 			'subject'  => 'New mailing list signup',
 		],
 	],
 
-	/* ── Setup Wizard pages (layouts provided by the Encore theme) ──── */
+	/* ── Setup Wizard pages (layouts provided by the Surface theme) ─── */
 	'pages'              => [
 		[
 			'id'          => 'home',
@@ -402,7 +401,7 @@ return [
 			'id'          => 'contact',
 			'title'       => 'Contact',
 			'slug'        => 'contact',
-			'description' => 'Booking enquiry form (saved to Airtable "Enquiries") and contact emails.',
+			'description' => 'Booking enquiry form (saved to the hub\'s "Enquiries") and contact emails.',
 			'tags'        => [ 'Form' ],
 			'required'    => true,
 			'in_menu'     => true,

@@ -6,8 +6,8 @@
  * encrypted by Drift_Surface_Crypto.
  *
  * wp-config.php overrides (handy for local/staging, and they win over the
- * screen): DRIFT_SURFACE_AIRTABLE_BASE, DRIFT_SURFACE_AIRTABLE_TOKEN. The
- * 2.x ENCORE_WEBSITE_* names still work (drift_surface_constant()).
+ * screen): DRIFT_SURFACE_HUB_URL, DRIFT_SURFACE_HUB_BASE,
+ * DRIFT_SURFACE_HUB_TOKEN.
  *
  * @package Drift_Surface
  */
@@ -22,13 +22,12 @@ final class Drift_Surface_Settings {
 
 	public static function defaults(): array {
 		return [
-			'api_base'       => '', // Blank = Airtable. A Drift: Surface Hub's API address otherwise.
+			'api_base'       => '', // The hub's API address ("Data source" on the artist's page in the hub).
 			'base_id'        => '',
 			'token'          => '', // Sealed.
 			'publish_secret' => '', // Sealed.
 			'product'        => 'surface',
 			'daily_check'    => '1',
-			'api_budget'     => 1000, // Airtable Free plan: 1,000 API calls / workspace / month.
 			'image_batch'    => 20,   // Images imported per sync run before deferring the rest.
 		];
 	}
@@ -50,11 +49,11 @@ final class Drift_Surface_Settings {
 		if ( in_array( $key, [ 'token', 'publish_secret' ], true ) ) {
 			return $default;
 		}
-		if ( 'api_base' === $key && '' !== drift_surface_constant( 'API_BASE' ) ) {
-			return drift_surface_constant( 'API_BASE' );
+		if ( 'api_base' === $key && self::hub_url_from_constant() ) {
+			return drift_surface_constant( 'HUB_URL' );
 		}
 		if ( 'base_id' === $key && self::base_from_constant() ) {
-			return drift_surface_constant( 'AIRTABLE_BASE' );
+			return drift_surface_constant( 'HUB_BASE' );
 		}
 
 		$all = self::all();
@@ -63,7 +62,7 @@ final class Drift_Surface_Settings {
 
 	public static function token(): string {
 		if ( self::token_from_constant() ) {
-			return drift_surface_constant( 'AIRTABLE_TOKEN' );
+			return drift_surface_constant( 'HUB_TOKEN' );
 		}
 		return Drift_Surface_Crypto::unseal( (string) ( self::all()['token'] ?? '' ) );
 	}
@@ -73,19 +72,30 @@ final class Drift_Surface_Settings {
 	}
 
 	public static function is_connected(): bool {
-		return self::valid_base_id( (string) self::get( 'base_id' ) ) && self::has_token();
+		return self::valid_hub_url( (string) self::get( 'api_base' ) )
+			&& self::valid_base_id( (string) self::get( 'base_id' ) )
+			&& self::has_token();
+	}
+
+	public static function hub_url_from_constant(): bool {
+		return '' !== drift_surface_constant( 'HUB_URL' );
 	}
 
 	public static function token_from_constant(): bool {
-		return '' !== drift_surface_constant( 'AIRTABLE_TOKEN' );
+		return '' !== drift_surface_constant( 'HUB_TOKEN' );
 	}
 
 	public static function base_from_constant(): bool {
-		return '' !== drift_surface_constant( 'AIRTABLE_BASE' );
+		return '' !== drift_surface_constant( 'HUB_BASE' );
 	}
 
+	/** The hub generates app-prefixed base IDs: "app" + 14 letters/digits. */
 	public static function valid_base_id( string $id ): bool {
 		return (bool) preg_match( '/^app[A-Za-z0-9]{14}$/', $id );
+	}
+
+	public static function valid_hub_url( string $url ): bool {
+		return '' !== $url && (bool) filter_var( $url, FILTER_VALIDATE_URL ) && in_array( wp_parse_url( $url, PHP_URL_SCHEME ), [ 'https', 'http' ], true );
 	}
 
 	/* ── Publish secret ──────────────────────────────────────────────── */
@@ -127,7 +137,7 @@ final class Drift_Surface_Settings {
 		$after['base_id'] = self::valid_base_id( $base ) ? $base : '';
 
 		$api_base          = esc_url_raw( trim( (string) ( $input['api_base'] ?? '' ) ), [ 'https', 'http' ] );
-		$after['api_base'] = $api_base ? trailingslashit( $api_base ) : '';
+		$after['api_base'] = self::valid_hub_url( $api_base ) ? trailingslashit( $api_base ) : '';
 
 		$token = trim( (string) ( $input['token'] ?? '' ) );
 		if ( ! empty( $input['clear_token'] ) ) {
@@ -141,7 +151,6 @@ final class Drift_Surface_Settings {
 		$after['product'] = in_array( $product, $products, true ) ? $product : ( $products[0] ?? 'surface' );
 
 		$after['daily_check'] = empty( $input['daily_check'] ) ? '0' : '1';
-		$after['api_budget']  = max( 100, min( 1000000, absint( $input['api_budget'] ?? 1000 ) ) );
 		$after['image_batch'] = max( 1, min( 200, absint( $input['image_batch'] ?? 20 ) ) );
 
 		update_option( self::OPTION, $after, false );

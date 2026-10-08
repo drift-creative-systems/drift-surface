@@ -3,7 +3,7 @@
  * Plugin Name:       Drift: Surface
  * Plugin URI:        https://github.com/drift-creative-systems/drift-surface
  * Update URI:        https://github.com/drift-creative-systems/drift-surface
- * Description:       Drift: Surface — the site engine for artist websites. Syncs content one way from a Drift: Surface Hub or Airtable into WordPress via a product map, with a Publish webhook, white label, admin access control and the page setup wizard.
+ * Description:       Drift: Surface — the site engine for artist websites. Syncs content one way from a Drift: Surface Hub into WordPress via a product map, with a Publish webhook, white label, admin access control and the page setup wizard.
  * Version:           3.0.0
  * Requires at least: 6.2
  * Requires PHP:      8.0
@@ -13,12 +13,8 @@
  * License URI:       https://github.com/drift-creative-systems/drift-surface/blob/main/LICENSE
  * Text Domain:       drift-surface
  *
- * Generic engine: Airtable → WordPress sync, forms, white label, admin
+ * Generic engine: Drift: Surface Hub → WordPress sync, forms, white label, admin
  * access and the setup wizard. Product specifics live in maps/.
- *
- * Formerly "Encore Website" (2.x) and "Drift Website" (1.x). includes/compat.php
- * keeps the 2.x encore_website_* names working for the Encore theme, and
- * includes/class-migrate.php moves 2.x stored data to the 3.0 names once.
  *
  * @package Drift_Surface
  */
@@ -38,20 +34,15 @@ define( 'DRIFT_SURFACE_URL', plugin_dir_url( __FILE__ ) );
 define( 'DRIFT_SURFACE_REPO', 'https://github.com/drift-creative-systems/drift-surface' );
 
 /**
- * A wp-config.php constant by its short name, e.g. 'AIRTABLE_TOKEN'. Reads
- * DRIFT_SURFACE_{name}, then the 2.x ENCORE_WEBSITE_{name}, so existing
- * wp-config.php files keep working.
+ * A wp-config.php constant by its short name, e.g. 'HUB_TOKEN' reads
+ * DRIFT_SURFACE_HUB_TOKEN.
  *
  * @param string $name Constant name without the prefix.
- * @return string Empty when neither is defined.
+ * @return string Empty when it isn't defined.
  */
 function drift_surface_constant( string $name ): string {
-	foreach ( [ 'DRIFT_SURFACE_', 'ENCORE_WEBSITE_' ] as $prefix ) {
-		if ( defined( $prefix . $name ) && constant( $prefix . $name ) ) {
-			return (string) constant( $prefix . $name );
-		}
-	}
-	return '';
+	$constant = 'DRIFT_SURFACE_' . $name;
+	return defined( $constant ) && constant( $constant ) ? (string) constant( $constant ) : '';
 }
 
 /*
@@ -91,7 +82,7 @@ unset( $drift_surface_puc );
 require_once DRIFT_SURFACE_DIR . 'includes/class-crypto.php';
 require_once DRIFT_SURFACE_DIR . 'includes/class-settings.php';
 require_once DRIFT_SURFACE_DIR . 'includes/class-log.php';
-require_once DRIFT_SURFACE_DIR . 'includes/class-airtable.php';
+require_once DRIFT_SURFACE_DIR . 'includes/class-hub-client.php';
 require_once DRIFT_SURFACE_DIR . 'includes/class-media.php';
 require_once DRIFT_SURFACE_DIR . 'includes/class-map.php';
 require_once DRIFT_SURFACE_DIR . 'includes/class-content-types.php';
@@ -103,12 +94,8 @@ require_once DRIFT_SURFACE_DIR . 'includes/class-white-label.php';
 require_once DRIFT_SURFACE_DIR . 'includes/class-page-creator.php';
 require_once DRIFT_SURFACE_DIR . 'includes/class-theme-check.php';
 require_once DRIFT_SURFACE_DIR . 'includes/class-admin-page.php';
-require_once DRIFT_SURFACE_DIR . 'includes/class-migrate.php';
 require_once DRIFT_SURFACE_DIR . 'includes/functions.php';
-require_once DRIFT_SURFACE_DIR . 'includes/compat.php';
 
-// Before anything reads options: carries 2.x (Encore Website) data across once.
-add_action( 'plugins_loaded', [ 'Drift_Surface_Migrate', 'maybe_run' ], 1 );
 add_action( 'plugins_loaded', [ 'Drift_Surface_Plugin', 'init' ] );
 
 final class Drift_Surface_Plugin {
@@ -131,7 +118,6 @@ final class Drift_Surface_Plugin {
 	}
 
 	public static function activate(): void {
-		Drift_Surface_Migrate::maybe_run();
 		Drift_Surface_Settings::ensure_publish_secret();
 		Drift_Surface_Content_Types::register();
 		Drift_Surface_Publish::schedule_daily_check();

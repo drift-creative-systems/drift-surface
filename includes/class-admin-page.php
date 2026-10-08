@@ -5,8 +5,8 @@
  * The Drift: Surface admin shell (left-hand tabs, one page load per tab, other
  * code adds tabs via the `drift_surface_admin_tabs` filter):
  *
- *   Connection (10)   Airtable base + token, product map, publish webhook.
- *   Sync (20)         Status, API budget, Sync now / Full resync, activity log.
+ *   Connection (10)   Hub address, Base ID + token, product map, publish secret.
+ *   Sync (20)         Status, Sync now / Full resync, activity log.
  *   Content (30)      What's synced where, and the current site settings.
  *   White Label (55)  Drift_Surface_White_Label.
  *   Setup Wizard (60) Create the product's standard pages.
@@ -75,19 +75,19 @@ final class Drift_Surface_Admin_Page {
 		$tabs = [
 			'connection' => [
 				'label'       => __( 'Connection', 'drift-surface' ),
-				'description' => __( 'Connect this site to its Airtable base and choose which product it runs.', 'drift-surface' ),
+				'description' => __( 'Connect this site to its artist in a Drift: Surface Hub and choose which product it runs.', 'drift-surface' ),
 				'position'    => 10,
 				'render'      => [ __CLASS__, 'render_connection_tab' ],
 			],
 			'sync'       => [
 				'label'       => __( 'Sync', 'drift-surface' ),
-				'description' => __( 'When content last came across from Airtable, what it cost, and what happened.', 'drift-surface' ),
+				'description' => __( 'When content last came across from the hub, and what happened.', 'drift-surface' ),
 				'position'    => 20,
 				'render'      => [ __CLASS__, 'render_sync_tab' ],
 			],
 			'content'    => [
 				'label'       => __( 'Content', 'drift-surface' ),
-				'description' => __( 'Where each Airtable table ends up in WordPress, and the site settings currently in use.', 'drift-surface' ),
+				'description' => __( 'Where each hub table ends up in WordPress, and the site settings currently in use.', 'drift-surface' ),
 				'position'    => 30,
 				'render'      => [ __CLASS__, 'render_content_tab' ],
 			],
@@ -177,7 +177,7 @@ final class Drift_Surface_Admin_Page {
 		}
 		printf(
 			'<div class="notice notice-warning"><p><strong>%1$s</strong> %2$s <a href="%3$s">%4$s</a></p></div>',
-			esc_html__( 'Drift: Surface isn\'t connected to Airtable yet.', 'drift-surface' ),
+			esc_html__( 'Drift: Surface isn\'t connected to a Drift: Surface Hub yet.', 'drift-surface' ),
 			esc_html__( 'Content won\'t sync until it is.', 'drift-surface' ),
 			esc_url( self::tab_url( 'connection' ) ),
 			esc_html__( 'Connect now', 'drift-surface' )
@@ -205,10 +205,12 @@ final class Drift_Surface_Admin_Page {
 					<span class="ds-head__product"><?php echo esc_html( $map['label'] ); ?></span>
 					<span class="ds-head__source">
 						<?php
+						$ds_hub_host = (string) wp_parse_url( Drift_Surface_Hub_Client::api_base(), PHP_URL_HOST );
 						echo esc_html(
-							Drift_Surface_Airtable::is_hub()
-								? __( 'Syncing from a Drift: Surface Hub', 'drift-surface' )
-								: __( 'Syncing from Airtable', 'drift-surface' )
+							'' !== $ds_hub_host
+								/* translators: %s: the hub's host name. */
+								? sprintf( __( 'Syncing from %s', 'drift-surface' ), $ds_hub_host )
+								: __( 'No hub connected', 'drift-surface' )
 						);
 						?>
 					</span>
@@ -246,8 +248,8 @@ final class Drift_Surface_Admin_Page {
 		$notice = sanitize_key( wp_unslash( $_GET['drift_surface_notice'] ?? '' ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$messages = [
 			'saved'       => [ 'success', __( 'Connection settings saved.', 'drift-surface' ) ],
-			'saved_check' => [ 'success', __( 'Connection settings saved. Run "Check connection" to confirm the base matches the product map.', 'drift-surface' ) ],
-			'secret'      => [ 'warning', __( 'New publish secret generated. Update it in the Airtable automation, or publishing will stop working.', 'drift-surface' ) ],
+			'saved_check' => [ 'success', __( 'Connection settings saved. Run "Check connection" to confirm the hub matches the product map.', 'drift-surface' ) ],
+			'secret'      => [ 'warning', __( 'New publish secret generated. Paste it into the artist\'s page in the hub, or the hub\'s Publish button will stop working.', 'drift-surface' ) ],
 			'checked'     => [ 'success', __( 'Connection checked — results below.', 'drift-surface' ) ],
 			'log_cleared' => [ 'success', __( 'Activity log cleared.', 'drift-surface' ) ],
 		];
@@ -265,7 +267,7 @@ final class Drift_Surface_Admin_Page {
 		$secret    = Drift_Surface_Settings::publish_secret();
 		?>
 		<?php if ( ! Drift_Surface_Crypto::available() ) : ?>
-			<div class="notice notice-error inline"><p><?php esc_html_e( 'OpenSSL (AES-256-GCM) isn\'t available on this server, so the token can\'t be stored safely. Define DRIFT_SURFACE_AIRTABLE_TOKEN in wp-config.php instead.', 'drift-surface' ); ?></p></div>
+			<div class="notice notice-error inline"><p><?php esc_html_e( 'OpenSSL (AES-256-GCM) isn\'t available on this server, so the token can\'t be stored safely. Define DRIFT_SURFACE_HUB_TOKEN in wp-config.php instead.', 'drift-surface' ); ?></p></div>
 		<?php endif; ?>
 
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
@@ -274,18 +276,18 @@ final class Drift_Surface_Admin_Page {
 
 			<section class="ds-card">
 				<div class="ds-card__head">
-					<h3><?php esc_html_e( 'Airtable', 'drift-surface' ); ?></h3>
+					<h3><?php esc_html_e( 'Drift: Surface Hub', 'drift-surface' ); ?></h3>
 					<span class="ds-pill ds-pill--<?php echo $connected ? 'ok' : 'off'; ?>"><?php echo $connected ? esc_html__( 'Connected', 'drift-surface' ) : esc_html__( 'Not connected', 'drift-surface' ); ?></span>
 				</div>
+				<p class="description"><?php esc_html_e( 'Copy these from the artist\'s page in the hub (Website connection).', 'drift-surface' ); ?></p>
 				<table class="form-table" role="presentation">
 					<tr>
-						<th scope="row"><label for="ds-api-base"><?php esc_html_e( 'Data source', 'drift-surface' ); ?></label></th>
+						<th scope="row"><label for="ds-api-base"><?php esc_html_e( 'Hub address', 'drift-surface' ); ?></label></th>
 						<td>
-							<?php $ds_api_const = '' !== drift_surface_constant( 'API_BASE' ); ?>
-							<input type="url" id="ds-api-base" class="regular-text code" name="drift_surface[api_base]" value="<?php echo esc_attr( (string) Drift_Surface_Settings::get( 'api_base' ) ); ?>" placeholder="<?php esc_attr_e( 'Blank = Airtable', 'drift-surface' ); ?>" <?php disabled( $ds_api_const ); ?>>
-							<p class="description"><?php esc_html_e( 'Leave blank to sync from Airtable. To sync from a Drift: Surface Hub, paste the hub\'s Data source address from the artist\'s page in the hub, plus the Base ID and token shown there.', 'drift-surface' ); ?></p>
-							<?php if ( $ds_api_const ) : ?>
-								<p class="description"><?php esc_html_e( 'Set by DRIFT_SURFACE_API_BASE in wp-config.php.', 'drift-surface' ); ?></p>
+							<input type="url" id="ds-api-base" class="regular-text code" name="drift_surface[api_base]" value="<?php echo esc_attr( (string) Drift_Surface_Settings::get( 'api_base' ) ); ?>" placeholder="https://hub.example/wp-json/drift-hub/v0/" <?php disabled( Drift_Surface_Settings::hub_url_from_constant() ); ?>>
+							<p class="description"><?php esc_html_e( 'Shown as "Data source" in the hub.', 'drift-surface' ); ?></p>
+							<?php if ( Drift_Surface_Settings::hub_url_from_constant() ) : ?>
+								<p class="description"><?php esc_html_e( 'Set by DRIFT_SURFACE_HUB_URL in wp-config.php.', 'drift-surface' ); ?></p>
 							<?php endif; ?>
 						</td>
 					</tr>
@@ -293,24 +295,23 @@ final class Drift_Surface_Admin_Page {
 						<th scope="row"><label for="ds-base"><?php esc_html_e( 'Base ID', 'drift-surface' ); ?></label></th>
 						<td>
 							<input type="text" id="ds-base" class="regular-text code" name="drift_surface[base_id]" value="<?php echo esc_attr( (string) Drift_Surface_Settings::get( 'base_id' ) ); ?>" placeholder="appXXXXXXXXXXXXXX" <?php disabled( Drift_Surface_Settings::base_from_constant() ); ?>>
-							<p class="description"><?php esc_html_e( 'From the base\'s URL: airtable.com/appXXXXXXXXXXXXXX/…', 'drift-surface' ); ?></p>
 							<?php if ( Drift_Surface_Settings::base_from_constant() ) : ?>
-								<p class="description"><?php esc_html_e( 'Set by DRIFT_SURFACE_AIRTABLE_BASE in wp-config.php.', 'drift-surface' ); ?></p>
+								<p class="description"><?php esc_html_e( 'Set by DRIFT_SURFACE_HUB_BASE in wp-config.php.', 'drift-surface' ); ?></p>
 							<?php endif; ?>
 						</td>
 					</tr>
 					<tr>
-						<th scope="row"><label for="ds-token"><?php esc_html_e( 'Personal access token', 'drift-surface' ); ?></label></th>
+						<th scope="row"><label for="ds-token"><?php esc_html_e( 'Token', 'drift-surface' ); ?></label></th>
 						<td>
 							<?php if ( Drift_Surface_Settings::token_from_constant() ) : ?>
-								<p><?php esc_html_e( 'Set by DRIFT_SURFACE_AIRTABLE_TOKEN in wp-config.php.', 'drift-surface' ); ?></p>
+								<p><?php esc_html_e( 'Set by DRIFT_SURFACE_HUB_TOKEN in wp-config.php.', 'drift-surface' ); ?></p>
 							<?php else : ?>
-								<input type="password" id="ds-token" class="regular-text code" name="drift_surface[token]" value="" autocomplete="new-password" placeholder="<?php echo Drift_Surface_Settings::has_token() ? esc_attr__( '•••••••• saved — leave blank to keep', 'drift-surface' ) : 'pat…'; ?>">
+								<input type="password" id="ds-token" class="regular-text code" name="drift_surface[token]" value="" autocomplete="new-password" placeholder="<?php echo Drift_Surface_Settings::has_token() ? esc_attr__( '•••••••• saved — leave blank to keep', 'drift-surface' ) : 'hub_…'; ?>">
 								<?php if ( Drift_Surface_Settings::has_token() ) : ?>
 									<label class="ds-inline-check"><input type="checkbox" name="drift_surface[clear_token]" value="1"> <?php esc_html_e( 'Remove saved token', 'drift-surface' ); ?></label>
 								<?php endif; ?>
 								<p class="description">
-									<?php esc_html_e( 'Create one at airtable.com/create/tokens with access to this base only. Scopes: data.records:read (sync), data.records:write (website forms), schema.bases:read (connection check). Stored encrypted.', 'drift-surface' ); ?>
+									<?php esc_html_e( 'The hub shows a new token once, when it\'s generated. Stored encrypted.', 'drift-surface' ); ?>
 								</p>
 							<?php endif; ?>
 						</td>
@@ -323,7 +324,7 @@ final class Drift_Surface_Admin_Page {
 									<option value="<?php echo esc_attr( $slug ); ?>" <?php selected( $settings['product'], $slug ); ?>><?php echo esc_html( Drift_Surface_Map::label( $slug ) ); ?></option>
 								<?php endforeach; ?>
 							</select>
-							<p class="description"><?php esc_html_e( 'Which product map decides how Airtable tables become WordPress content.', 'drift-surface' ); ?></p>
+							<p class="description"><?php esc_html_e( 'Which product map decides how hub tables become WordPress content.', 'drift-surface' ); ?></p>
 						</td>
 					</tr>
 				</table>
@@ -335,21 +336,14 @@ final class Drift_Surface_Admin_Page {
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Daily safety check', 'drift-surface' ); ?></th>
 						<td>
-							<label><input type="checkbox" name="drift_surface[daily_check]" value="1" <?php checked( $settings['daily_check'], '1' ); ?>> <?php esc_html_e( 'Once a day, check Airtable\'s "Last Published" stamp and sync if a publish was missed (1 API call a day).', 'drift-surface' ); ?></label>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row"><label for="ds-budget"><?php esc_html_e( 'Monthly API budget', 'drift-surface' ); ?></label></th>
-						<td>
-							<input type="number" id="ds-budget" class="small-text" min="100" step="100" name="drift_surface[api_budget]" value="<?php echo esc_attr( (string) $settings['api_budget'] ); ?>">
-							<p class="description"><?php esc_html_e( 'Airtable Free allows 1,000 calls per workspace per month; Team 100,000. The daily check stops when this is reached; publishing and Sync now still work.', 'drift-surface' ); ?></p>
+							<label><input type="checkbox" name="drift_surface[daily_check]" value="1" <?php checked( $settings['daily_check'], '1' ); ?>> <?php esc_html_e( 'Once a day, check the hub\'s "Last Published" stamp and sync if a publish was missed (1 request a day).', 'drift-surface' ); ?></label>
 						</td>
 					</tr>
 					<tr>
 						<th scope="row"><label for="ds-batch"><?php esc_html_e( 'Images per run', 'drift-surface' ); ?></label></th>
 						<td>
 							<input type="number" id="ds-batch" class="small-text" min="1" max="200" name="drift_surface[image_batch]" value="<?php echo esc_attr( (string) $settings['image_batch'] ); ?>">
-							<p class="description"><?php esc_html_e( 'New images imported per sync before the rest continue a minute later (no extra API calls). Lower it on slow hosting.', 'drift-surface' ); ?></p>
+							<p class="description"><?php esc_html_e( 'New images imported per sync before the rest continue a minute later (no extra hub requests). Lower it on slow hosting.', 'drift-surface' ); ?></p>
 						</td>
 					</tr>
 				</table>
@@ -359,24 +353,12 @@ final class Drift_Surface_Admin_Page {
 		</form>
 
 		<section class="ds-card">
-			<h3><?php esc_html_e( 'Publishing from Airtable', 'drift-surface' ); ?></h3>
-			<p class="description"><?php esc_html_e( 'Free plan: put the Publish link in an Airtable button (Open URL). Paid plans can use the automation script with the webhook URL and secret instead.', 'drift-surface' ); ?></p>
-			<?php $link = Drift_Surface_Publish::publish_link_url(); ?>
-			<?php if ( $link ) : ?>
+			<h3><?php esc_html_e( 'Publishing from the hub', 'drift-surface' ); ?></h3>
+			<p class="description"><?php esc_html_e( 'Paste these into the artist\'s page in the hub (Website connection), so its Publish button can update this site.', 'drift-surface' ); ?></p>
 			<table class="form-table" role="presentation">
 				<tr>
-					<th scope="row"><?php esc_html_e( 'Publish link (Free plan)', 'drift-surface' ); ?></th>
-					<td><div class="ds-copy"><code class="ds-secret" data-secret="<?php echo esc_attr( $link ); ?>"><?php echo esc_html( home_url( '/?' . Drift_Surface_Publish::LINK_PARAM . '=••••••••' ) ); ?></code><button type="button" class="button button-small ds-reveal"><?php esc_html_e( 'Show', 'drift-surface' ); ?></button><button type="button" class="button button-small ds-copy__btn" data-copy="<?php echo esc_attr( $link ); ?>"><?php esc_html_e( 'Copy', 'drift-surface' ); ?></button></div>
-					<p class="description"><?php esc_html_e( 'Opening it syncs the site straight away and shows the band a confirmation page. Contains the secret — share it only inside the band\'s base.', 'drift-surface' ); ?></p></td>
-				</tr>
-			</table>
-			<?php endif; ?>
-			<h3><?php esc_html_e( 'Publish webhook (paid plans)', 'drift-surface' ); ?></h3>
-			<p class="description"><?php esc_html_e( 'Paste these into the Airtable "Publish" automation script (docs/airtable-publish-automation.js in the plugin).', 'drift-surface' ); ?></p>
-			<table class="form-table" role="presentation">
-				<tr>
-					<th scope="row"><?php esc_html_e( 'Webhook URL', 'drift-surface' ); ?></th>
-					<td><div class="ds-copy"><code><?php echo esc_html( Drift_Surface_Publish::webhook_url() ); ?></code><button type="button" class="button button-small ds-copy__btn" data-copy="<?php echo esc_attr( Drift_Surface_Publish::webhook_url() ); ?>"><?php esc_html_e( 'Copy', 'drift-surface' ); ?></button></div></td>
+					<th scope="row"><?php esc_html_e( 'Website address', 'drift-surface' ); ?></th>
+					<td><div class="ds-copy"><code><?php echo esc_html( home_url( '/' ) ); ?></code><button type="button" class="button button-small ds-copy__btn" data-copy="<?php echo esc_attr( home_url( '/' ) ); ?>"><?php esc_html_e( 'Copy', 'drift-surface' ); ?></button></div></td>
 				</tr>
 				<tr>
 					<th scope="row"><?php esc_html_e( 'Publish secret', 'drift-surface' ); ?></th>
@@ -384,7 +366,7 @@ final class Drift_Surface_Admin_Page {
 						<?php if ( $secret ) : ?>
 							<div class="ds-copy"><code class="ds-secret" data-secret="<?php echo esc_attr( $secret ); ?>">••••••••••••••••</code><button type="button" class="button button-small ds-reveal"><?php esc_html_e( 'Show', 'drift-surface' ); ?></button><button type="button" class="button button-small ds-copy__btn" data-copy="<?php echo esc_attr( $secret ); ?>"><?php esc_html_e( 'Copy', 'drift-surface' ); ?></button></div>
 						<?php endif; ?>
-						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="ds-inline-form" onsubmit="return confirm('<?php echo esc_js( __( 'Generate a new secret? The Airtable automation will stop working until you paste the new one in.', 'drift-surface' ) ); ?>');">
+						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="ds-inline-form" onsubmit="return confirm('<?php echo esc_js( __( 'Generate a new secret? The hub\'s Publish button will stop working until you paste the new one into the hub.', 'drift-surface' ) ); ?>');">
 							<?php wp_nonce_field( 'drift_surface_regenerate_secret' ); ?>
 							<input type="hidden" name="action" value="drift_surface_regenerate_secret">
 							<button type="submit" class="button-link"><?php echo $secret ? esc_html__( 'Generate a new secret', 'drift-surface' ) : esc_html__( 'Generate secret', 'drift-surface' ); ?></button>
@@ -403,7 +385,7 @@ final class Drift_Surface_Admin_Page {
 					<button type="submit" class="button" <?php disabled( ! $connected ); ?>><?php esc_html_e( 'Check connection', 'drift-surface' ); ?></button>
 				</form>
 			</div>
-			<p class="description"><?php esc_html_e( 'Compares the base with the product map: every table and field the site expects. Uses 1 API call.', 'drift-surface' ); ?></p>
+			<p class="description"><?php esc_html_e( 'Compares the hub with the product map: every table and field the site expects. Uses 1 hub request.', 'drift-surface' ); ?></p>
 			<?php self::render_check_result(); ?>
 		</section>
 		<?php
@@ -420,18 +402,13 @@ final class Drift_Surface_Admin_Page {
 			return;
 		}
 
-		if ( ! empty( $result['records_only'] ) ) {
-			printf( '<div class="notice notice-warning inline"><p>%s</p></div>', esc_html__( 'Records are readable, so syncing will work — but the token has no schema.bases:read scope, so tables and fields couldn\'t be checked against the map.', 'drift-surface' ) );
-			return;
-		}
-
 		$problems = (array) ( $result['problems'] ?? [] );
 		if ( ! $problems ) {
-			printf( '<div class="notice notice-success inline"><p>%s</p></div>', esc_html__( 'Every table and field the product map expects is in the base.', 'drift-surface' ) );
+			printf( '<div class="notice notice-success inline"><p>%s</p></div>', esc_html__( 'Every table and field the product map expects is in the hub.', 'drift-surface' ) );
 			return;
 		}
 		?>
-		<div class="notice notice-warning inline"><p><?php esc_html_e( 'The base doesn\'t match the product map yet. Rename or add these in Airtable (names must match exactly, including case):', 'drift-surface' ); ?></p></div>
+		<div class="notice notice-warning inline"><p><?php esc_html_e( 'The hub doesn\'t have everything the product map expects. Update the Drift: Surface Hub plugin so its schema matches this version of Drift: Surface:', 'drift-surface' ); ?></p></div>
 		<table class="widefat striped ds-table">
 			<thead><tr><th><?php esc_html_e( 'Table', 'drift-surface' ); ?></th><th><?php esc_html_e( 'Missing', 'drift-surface' ); ?></th></tr></thead>
 			<tbody>
@@ -477,20 +454,11 @@ final class Drift_Surface_Admin_Page {
 	public static function handle_check_connection(): void {
 		self::guard( 'drift_surface_check_connection' );
 
-		$schema = Drift_Surface_Airtable::schema();
+		$schema = Drift_Surface_Hub_Client::schema();
 		$result = [];
 
 		if ( is_wp_error( $schema ) ) {
-			$status = (int) ( $schema->get_error_data()['status'] ?? 0 );
-			if ( in_array( $status, [ 401, 403 ], true ) ) {
-				// Maybe just missing schema.bases:read — see if records are readable.
-				$map   = Drift_Surface_Map::current();
-				$table = $map['settings']['table'] ?? ( reset( $map['entities'] )['table'] ?? '' );
-				$probe = $table ? Drift_Surface_Airtable::list_records( $table, [ 'maxRecords' => 1 ] ) : $schema;
-				$result = is_wp_error( $probe ) ? [ 'error' => $probe->get_error_message() ] : [ 'records_only' => true ];
-			} else {
-				$result = [ 'error' => $schema->get_error_message() ];
-			}
+			$result = [ 'error' => $schema->get_error_message() ];
 		} else {
 			$problems = [];
 			foreach ( Drift_Surface_Map::expected_schema() as $table => $fields ) {
@@ -515,9 +483,6 @@ final class Drift_Surface_Admin_Page {
 
 	public static function render_sync_tab(): void {
 		$status  = Drift_Surface_Sync_Engine::status();
-		$usage   = Drift_Surface_Airtable::usage();
-		$budget  = Drift_Surface_Airtable::budget();
-		$percent = $budget ? min( 100, (int) round( $usage['calls'] / $budget * 100 ) ) : 0;
 		$publish = get_option( Drift_Surface_Publish::PUBLISH_OPTION, [] );
 		$daily   = wp_next_scheduled( Drift_Surface_Publish::HOOK_DAILY );
 		$return  = self::tab_url( 'sync' );
@@ -540,8 +505,8 @@ final class Drift_Surface_Admin_Page {
 					<p class="description">
 						<?php
 						echo esc_html( sprintf(
-							/* translators: 1: date, 2: trigger, 3: seconds, 4: calls, 5: images. */
-							__( '%1$s · triggered by %2$s · %3$ss · %4$d API calls · %5$d images', 'drift-surface' ),
+							/* translators: 1: date, 2: trigger, 3: seconds, 4: hub requests, 5: images. */
+							__( '%1$s · triggered by %2$s · %3$ss · %4$d hub requests · %5$d images', 'drift-surface' ),
 							wp_date( $fmt, (int) $status['last_run'] ),
 							(string) ( $status['trigger'] ?? '' ),
 							(string) ( $status['duration'] ?? 0 ),
@@ -558,15 +523,12 @@ final class Drift_Surface_Admin_Page {
 				<?php endif; ?>
 				<p class="ds-actions">
 					<a class="button button-primary" href="<?php echo esc_url( $sync ); ?>"><?php esc_html_e( 'Sync now', 'drift-surface' ); ?></a>
-					<a class="button" href="<?php echo esc_url( $force ); ?>" title="<?php esc_attr_e( 'Re-saves every item even if unchanged. Same API cost as a normal sync.', 'drift-surface' ); ?>"><?php esc_html_e( 'Full resync', 'drift-surface' ); ?></a>
+					<a class="button" href="<?php echo esc_url( $force ); ?>" title="<?php esc_attr_e( 'Re-saves every item even if unchanged. Same hub requests as a normal sync.', 'drift-surface' ); ?>"><?php esc_html_e( 'Full resync', 'drift-surface' ); ?></a>
 				</p>
 			</section>
 
 			<section class="ds-card">
-				<h3><?php esc_html_e( 'Airtable API this month', 'drift-surface' ); ?></h3>
-				<p class="ds-big"><?php echo esc_html( number_format_i18n( $usage['calls'] ) ); ?> <span>/ <?php echo esc_html( number_format_i18n( $budget ) ); ?></span></p>
-				<div class="ds-meter<?php echo $percent >= 80 ? ' ds-meter--hot' : ''; ?>"><span style="width:<?php echo esc_attr( (string) $percent ); ?>%"></span></div>
-				<p class="description"><?php esc_html_e( 'Counted by this site, per calendar month (UTC). Other tools using the same workspace also count towards Airtable\'s limit.', 'drift-surface' ); ?></p>
+				<h3><?php esc_html_e( 'Publishing', 'drift-surface' ); ?></h3>
 				<dl class="ds-facts">
 					<dt><?php esc_html_e( 'Last publish received', 'drift-surface' ); ?></dt>
 					<dd><?php echo ! empty( $publish['received_at'] ) ? esc_html( wp_date( $fmt, (int) $publish['received_at'] ) ) : esc_html__( 'Never', 'drift-surface' ); ?></dd>
@@ -625,7 +587,7 @@ final class Drift_Surface_Admin_Page {
 		<section class="ds-card">
 			<h3><?php esc_html_e( 'Tables', 'drift-surface' ); ?></h3>
 			<table class="widefat striped ds-table">
-				<thead><tr><th><?php esc_html_e( 'Airtable table', 'drift-surface' ); ?></th><th><?php esc_html_e( 'WordPress', 'drift-surface' ); ?></th><th><?php esc_html_e( 'Live', 'drift-surface' ); ?></th></tr></thead>
+				<thead><tr><th><?php esc_html_e( 'Hub table', 'drift-surface' ); ?></th><th><?php esc_html_e( 'WordPress', 'drift-surface' ); ?></th><th><?php esc_html_e( 'Live', 'drift-surface' ); ?></th></tr></thead>
 				<tbody>
 				<?php if ( $map['settings'] ) : ?>
 					<tr><td><strong><?php echo esc_html( $map['settings']['table'] ); ?></strong></td><td><?php esc_html_e( 'Site settings', 'drift-surface' ); ?> <code><?php echo esc_html( $map['settings']['option'] ); ?></code></td><td>—</td></tr>
@@ -660,7 +622,7 @@ final class Drift_Surface_Admin_Page {
 					<p><?php esc_html_e( 'Nothing synced yet.', 'drift-surface' ); ?></p>
 				<?php else : ?>
 					<table class="widefat striped ds-table">
-						<thead><tr><th><?php esc_html_e( 'Airtable field', 'drift-surface' ); ?></th><th><?php esc_html_e( 'Key', 'drift-surface' ); ?></th><th><?php esc_html_e( 'Value', 'drift-surface' ); ?></th></tr></thead>
+						<thead><tr><th><?php esc_html_e( 'Hub field', 'drift-surface' ); ?></th><th><?php esc_html_e( 'Key', 'drift-surface' ); ?></th><th><?php esc_html_e( 'Value', 'drift-surface' ); ?></th></tr></thead>
 						<tbody>
 						<?php foreach ( $map['settings']['fields'] as $name => $field ) :
 							$key   = (string) $field['to'];

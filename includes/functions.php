@@ -3,7 +3,7 @@
  * functions.php — the small public API product themes use.
  *
  * Themes read synced data through these (or plain WordPress functions:
- * get_post_meta(), get_the_post_thumbnail()…). They never call Airtable.
+ * get_post_meta(), get_the_post_thumbnail()…). They never call the hub.
  * Every function is guarded with function_exists() so a theme can ship
  * fallbacks for when the plugin is inactive.
  *
@@ -24,7 +24,7 @@ if ( ! function_exists( 'drift_surface_settings' ) ) {
 		static $cache = null;
 		if ( null === $cache ) {
 			$map    = Drift_Surface_Map::current();
-			$option = $map['settings']['option'] ?? 'encore_site_settings';
+			$option = $map['settings']['option'] ?? 'surface_site_settings';
 			$cache  = get_option( $option, [] );
 			$cache  = is_array( $cache ) ? $cache : [];
 		}
@@ -63,7 +63,7 @@ if ( ! function_exists( 'drift_surface_setting_image' ) ) {
 
 if ( ! function_exists( 'drift_surface_linked_posts' ) ) {
 	/**
-	 * Posts linked from a 'link' field, in Airtable's order.
+	 * Posts linked from a 'link' field, in the hub's order.
 	 * e.g. drift_surface_linked_posts( get_the_ID(), 'tracks' ).
 	 *
 	 * @return WP_Post[]
@@ -73,7 +73,7 @@ if ( ! function_exists( 'drift_surface_linked_posts' ) ) {
 		if ( ! $ids ) {
 			return [];
 		}
-		// Not 'any': WordPress's 'any' skips non-public types (e.g. encore_track).
+		// Not 'any': WordPress's 'any' skips non-public types (e.g. surface_track).
 		$types = array_values( array_unique( array_merge(
 			wp_list_pluck( Drift_Surface_Map::current()['entities'], 'post_type' ),
 			[ 'post', 'page' ]
@@ -89,7 +89,7 @@ if ( ! function_exists( 'drift_surface_linked_posts' ) ) {
 }
 
 if ( ! function_exists( 'drift_surface_is_synced' ) ) {
-	/** Whether a post is owned by the Airtable sync. */
+	/** Whether a post is owned by the hub sync. */
 	function drift_surface_is_synced( int $post_id ): bool {
 		return '' !== (string) get_post_meta( $post_id, Drift_Surface_Sync_Engine::META_ID, true );
 	}

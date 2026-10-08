@@ -1,7 +1,6 @@
 <?php
 /**
- * Removes Drift: Surface's own options and transients, under both the 3.0
- * names and the 2.x (Encore Website) names in case the migration never ran.
+ * Removes Drift: Surface's own options, transients, cron events and user meta.
  *
  * Synced content (posts, images, the site settings option) is deliberately
  * left in place: uninstalling the engine shouldn't empty a live website.
@@ -14,23 +13,20 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 	exit;
 }
 
-foreach ( [ 'drift_surface_', 'encore_website_' ] as $prefix ) {
-	foreach ( [ 'settings', 'log', 'api_usage', 'sync_status', 'last_publish', 'media_map', 'white_label', 'hidden_menus' ] as $option ) {
-		delete_option( $prefix . $option );
-	}
-
-	foreach ( [ 'sync_lock', 'sync_records', 'airtable_pause', 'schema_check', 'link_throttle' ] as $transient ) {
-		delete_transient( $prefix . $transient );
-	}
-
-	foreach ( [ 'daily_check', 'run_sync', 'continue_sync' ] as $hook ) {
-		wp_unschedule_hook( $prefix . $hook );
-	}
-
-	delete_metadata( 'user', 0, $prefix . 'agency_user', '', true );
+foreach ( [ 'settings', 'log', 'sync_status', 'last_publish', 'media_map', 'white_label', 'hidden_menus' ] as $drift_surface_option ) {
+	delete_option( 'drift_surface_' . $drift_surface_option );
 }
 
+foreach ( [ 'sync_lock', 'sync_records', 'schema_check' ] as $drift_surface_transient ) {
+	delete_transient( 'drift_surface_' . $drift_surface_transient );
+}
+
+foreach ( [ 'daily_check', 'run_sync', 'continue_sync' ] as $drift_surface_hook ) {
+	wp_unschedule_hook( 'drift_surface_' . $drift_surface_hook );
+}
+
+delete_metadata( 'user', 0, 'drift_surface_agency_user', '', true );
+
+// Bookkeeping left by pre-release builds.
 delete_option( 'drift_surface_migrated' );
 delete_option( 'drift_surface_migrating' );
-delete_option( 'encore_website_migrated' );
-delete_option( 'encore_website_migrating' );

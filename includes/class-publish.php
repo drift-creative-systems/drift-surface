@@ -2,29 +2,22 @@
 /**
  * class-publish.php — how a sync gets started.
  *
- * 1. Publish (the normal route). The client ticks "Publish" in Airtable; an
- *    Airtable automation POSTs to /wp-json/drift-surface/v1/publish with the site's
- *    publish secret (docs/airtable-publish-automation.js). The site queues a
- *    sync in the background and answers 202 straight away. One automation run
- *    per publish, roughly one API call per table.
+ * 1. Publish (the normal route). The artist or label presses Publish in the
+ *    Drift: Surface Hub, which stamps the Site Settings "Last Published"
+ *    field and POSTs to /wp-json/drift-surface/v1/publish with the site's
+ *    publish secret (drift-hub/includes/class-publish.php). The site queues a
+ *    sync in the background and answers 202 straight away. Roughly one hub
+ *    request per table.
  *
  * 2. Daily safety check. Once a day the site reads one field — the settings
  *    row's "Last Published" stamp — and runs a full sync only if it differs
  *    from the last one synced. Catches a webhook that never arrived for one
- *    API call a day (~30 a month) instead of polling every table.
+ *    request a day instead of polling every table.
  *
  * 3. "Sync now" in the admin bar, for agency staff and editors.
  *
- * 4. Publish link (Airtable Free plan, where automations can't run scripts):
- *    a button in Airtable opens https://site/?drift_surface_publish=SECRET in a new
- *    tab. The site syncs right there and shows the band a plain "your
- *    website is up to date" page. No automation run, ~1 API call per table.
- *
- * Why not the old 30-minute cron per table: at ~6 calls per run that's
- * ~8,600 calls a month, against the Free plan's 1,000 per workspace.
- *
- * Also GET /wp-json/drift-surface/v1/status (same secret) for uptime/monitoring
- * scenarios in Make.com.
+ * Also GET /wp-json/drift-surface/v1/status (same secret) for uptime and
+ * monitoring tools.
  *
  * @package Drift_Surface
  */
@@ -49,9 +42,6 @@ final class Drift_Surface_Publish {
 		add_action( 'admin_bar_menu', [ __CLASS__, 'admin_bar_node' ], 100 );
 		add_action( 'admin_post_' . self::ACTION_SYNC, [ __CLASS__, 'handle_sync_now' ] );
 		add_action( 'admin_notices', [ __CLASS__, 'render_notice' ] );
-
-		// Publish link for Airtable's Free plan (no automation scripts).
-		add_action( 'wp_loaded', [ __CLASS__, 'maybe_handle_publish_link' ] ); // After init, so post types exist.
 	}
 
 	/* ── REST ────────────────────────────────────────────────────────── */
@@ -102,7 +92,7 @@ final class Drift_Surface_Publish {
 			false
 		);
 
-		Drift_Surface_Log::info( 'Publish received from Airtable' . ( $stamp ? ' (' . $stamp . ')' : '' ) . ' — sync queued.', 'publish' );
+		Drift_Surface_Log::info( 'Publish received from the hub' . ( $stamp ? ' (' . $stamp . ')' : '' ) . ' — sync queued.', 'publish' );
 		Drift_Surface_Sync_Engine::queue( 'publish' );
 
 		return new WP_REST_Response( [ 'queued' => true, 'site' => home_url( '/' ) ], 202 );
@@ -110,7 +100,6 @@ final class Drift_Surface_Publish {
 
 	public static function rest_status(): WP_REST_Response {
 		$status = Drift_Surface_Sync_Engine::status();
-		$usage  = Drift_Surface_Airtable::usage();
 
 		return new WP_REST_Response(
 			[
@@ -122,8 +111,6 @@ final class Drift_Surface_Publish {
 				'last_ok'       => (int) ( $status['last_ok'] ?? 0 ),
 				'ok'            => (bool) ( $status['ok'] ?? false ),
 				'messages'      => (array) ( $status['messages'] ?? [] ),
-				'api_calls'     => $usage['calls'],
-				'api_budget'    => Drift_Surface_Airtable::budget(),
 				'last_publish'  => get_option( self::PUBLISH_OPTION, [] ),
 			],
 			200
@@ -132,90 +119,6 @@ final class Drift_Surface_Publish {
 
 	public static function webhook_url(): string {
 		return rest_url( self::NAMESPACE . '/publish' );
-	}
-
-	/* ── Publish link (Free plan) ─────────────────────────────────────── */
-
-	const LINK_PARAM    = 'drift_surface_publish';
-	const LINK_THROTTLE = 'drift_surface_link_throttle';
-
-	public static function publish_link_url(): string {
-		$secret = Drift_Surface_Settings::publish_secret();
-		return $secret ? add_query_arg( self::LINK_PARAM, rawurlencode( $secret ), home_url( '/' ) ) : '';
-	}
-
-	/**
-	 * ?drift_surface_publish=SECRET — runs a sync now and shows the result as a
-	 * simple page. Throttled to one run a minute so a double-click or a
-	 * refresh can't burn the API budget.
-	 */
-	public static function maybe_handle_publish_link(): void {
-		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- Authenticated by the secret.
-		if ( ! isset( $_GET[ self::LINK_PARAM ] ) || is_admin() ) {
-			return;
-		}
-
-		nocache_headers();
-		header( 'X-Robots-Tag: noindex, nofollow', true );
-
-		$given = sanitize_text_field( wp_unslash( (string) $_GET[ self::LINK_PARAM ] ) );
-		// phpcs:enable
-		$expected = Drift_Surface_Settings::publish_secret();
-
-		if ( '' === $expected || ! hash_equals( $expected, $given ) ) {
-			status_header( 403 );
-			self::link_page( false, __( 'This publish link isn\'t valid.', 'drift-surface' ), [ __( 'Ask your web team for the current link.', 'drift-surface' ) ] );
-		}
-
-		$last = (int) get_transient( self::LINK_THROTTLE );
-		if ( $last && time() - $last < MINUTE_IN_SECONDS ) {
-			self::link_page( true, __( 'Already updating', 'drift-surface' ), [ __( 'Your website was updated less than a minute ago — changes since then will show on the next publish.', 'drift-surface' ) ] );
-		}
-		set_transient( self::LINK_THROTTLE, time(), MINUTE_IN_SECONDS );
-
-		update_option( self::PUBLISH_OPTION, [ 'received_at' => time(), 'stamp' => '', 'by' => 'publish-link' ], false );
-		Drift_Surface_Log::info( 'Publish link used — syncing now.', 'publish' );
-
-		ignore_user_abort( true );
-		$result = Drift_Surface_Sync_Engine::run( 'publish-link' );
-
-		$lines = (array) $result['messages'];
-		if ( Drift_Surface_Media::was_deferred() ) {
-			$lines[] = __( 'Some new images are still importing and will appear in a minute or two.', 'drift-surface' );
-		}
-
-		self::link_page(
-			! empty( $result['ok'] ),
-			! empty( $result['ok'] ) ? __( 'Your website is up to date', 'drift-surface' ) : __( 'Your website updated, with a problem', 'drift-surface' ),
-			$lines
-		);
-	}
-
-	/** Minimal standalone result page, then exit. */
-	private static function link_page( bool $ok, string $title, array $lines ): void {
-		$name   = function_exists( 'drift_surface_setting' ) ? (string) drift_surface_setting( 'name', get_bloginfo( 'name' ) ) : get_bloginfo( 'name' );
-		$accent = function_exists( 'drift_surface_setting' ) ? (string) drift_surface_setting( 'colour_primary', '#ff4fa3' ) : '#ff4fa3';
-		$accent = sanitize_hex_color( $accent ) ?: '#ff4fa3';
-		?><!doctype html>
-<html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow">
-<title><?php echo esc_html( $title . ' — ' . $name ); ?></title>
-<style>
-body{margin:0;min-height:100vh;display:grid;place-items:center;background:#000;color:#fff;font:17px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-main{width:min(92vw,34rem);padding:2.5rem;background:#fff;color:#1d2327;border-radius:14px;border-top:6px solid <?php echo esc_attr( $accent ); ?>}
-h1{margin:0 0 .25rem;font-size:1.6rem;line-height:1.2}.who{margin:0 0 1.25rem;color:#5c6168}
-ul{margin:0 0 1.5rem;padding-left:1.2em;color:#3c434a;font-size:.95rem}
-a{display:inline-block;padding:.7em 1.4em;background:#000;color:#fff;border-radius:999px;text-decoration:none;font-weight:600}
-a:hover,a:focus{background:#2a2b2e}a:focus-visible{outline:2px solid #000;outline-offset:2px}
-.bad{border-top-color:#c0262d}
-</style></head>
-<body><main class="<?php echo $ok ? 'ok' : 'bad'; ?>">
-<h1><?php echo esc_html( ( $ok ? '✓ ' : '' ) . $title ); ?></h1>
-<p class="who"><?php echo esc_html( $name ); ?></p>
-<?php if ( $lines ) : ?><ul><?php foreach ( $lines as $line ) : ?><li><?php echo esc_html( (string) $line ); ?></li><?php endforeach; ?></ul><?php endif; ?>
-<a href="<?php echo esc_url( home_url( '/' ) ); ?>"><?php esc_html_e( 'View the website', 'drift-surface' ); ?></a>
-</main></body></html>
-		<?php
-		exit;
 	}
 
 	/* ── Daily safety check ──────────────────────────────────────────── */
@@ -241,17 +144,12 @@ a:hover,a:focus{background:#2a2b2e}a:focus-visible{outline:2px solid #000;outlin
 	}
 
 	/**
-	 * One API call: read the settings row's publish stamp. Full sync only if
+	 * One hub request: read the settings row's publish stamp. Full sync only if
 	 * it changed since the last sync. Without a publish field in the map,
-	 * falls back to a full sync (≈ one call per table).
+	 * falls back to a full sync (≈ one request per table).
 	 */
 	public static function daily_check(): void {
 		if ( '1' !== (string) Drift_Surface_Settings::get( 'daily_check', '1' ) || ! Drift_Surface_Settings::is_connected() ) {
-			return;
-		}
-
-		if ( Drift_Surface_Airtable::over_budget() ) {
-			Drift_Surface_Log::warning( 'Daily check skipped — this month\'s API budget is used up.', 'daily' );
 			return;
 		}
 
@@ -264,7 +162,7 @@ a:hover,a:focus{background:#2a2b2e}a:focus-visible{outline:2px solid #000;outlin
 			return;
 		}
 
-		$records = Drift_Surface_Airtable::list_records( $table, [ 'maxRecords' => 1, 'fields' => [ $field ] ] );
+		$records = Drift_Surface_Hub_Client::list_records( $table, [ 'maxRecords' => 1, 'fields' => [ $field ] ] );
 		if ( is_wp_error( $records ) ) {
 			Drift_Surface_Log::error( 'Daily check failed — ' . $records->get_error_message(), 'daily' );
 			return;
@@ -279,7 +177,7 @@ a:hover,a:focus{background:#2a2b2e}a:focus-visible{outline:2px solid #000;outlin
 			return;
 		}
 
-		Drift_Surface_Log::info( 'Daily check: Airtable has an unsynced publish — syncing.', 'daily' );
+		Drift_Surface_Log::info( 'Daily check: the hub has an unsynced publish — syncing.', 'daily' );
 		Drift_Surface_Sync_Engine::run( 'daily' );
 	}
 
@@ -295,9 +193,9 @@ a:hover,a:focus{background:#2a2b2e}a:focus-visible{outline:2px solid #000;outlin
 
 		$bar->add_node( [
 			'id'    => 'ds-sync',
-			'title' => '<span class="ab-icon dashicons dashicons-update" aria-hidden="true"></span><span class="ab-label">' . esc_html__( 'Sync from Airtable', 'drift-surface' ) . '</span>',
+			'title' => '<span class="ab-icon dashicons dashicons-update" aria-hidden="true"></span><span class="ab-label">' . esc_html__( 'Sync from hub', 'drift-surface' ) . '</span>',
 			'href'  => wp_nonce_url( add_query_arg( [ 'action' => self::ACTION_SYNC, 'return_to' => rawurlencode( $return_to ) ], admin_url( 'admin-post.php' ) ), self::ACTION_SYNC ),
-			'meta'  => [ 'title' => __( 'Pull the latest content from Airtable now', 'drift-surface' ) ],
+			'meta'  => [ 'title' => __( 'Pull the latest content from the Drift: Surface Hub now', 'drift-surface' ) ],
 		] );
 
 		$last = (int) ( Drift_Surface_Sync_Engine::status()['last_run'] ?? 0 );
@@ -337,7 +235,7 @@ a:hover,a:focus{background:#2a2b2e}a:focus-visible{outline:2px solid #000;outlin
 		printf(
 			'<div class="notice notice-%1$s is-dismissible"><p><strong>%2$s</strong></p><ul style="list-style:disc;margin-left:1.5em;">%3$s</ul></div>',
 			! empty( $result['ok'] ) ? 'success' : 'warning',
-			esc_html( ! empty( $result['ok'] ) ? __( 'Synced from Airtable.', 'drift-surface' ) : __( 'Sync finished with problems.', 'drift-surface' ) ),
+			esc_html( ! empty( $result['ok'] ) ? __( 'Synced from the hub.', 'drift-surface' ) : __( 'Sync finished with problems.', 'drift-surface' ) ),
 			implode( '', array_map( static fn( $m ) => '<li>' . esc_html( (string) $m ) . '</li>', (array) ( $result['messages'] ?? [] ) ) ) // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Escaped per item.
 		);
 	}

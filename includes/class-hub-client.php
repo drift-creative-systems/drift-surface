@@ -1,18 +1,21 @@
 <?php
 /**
- * class-airtable.php — Airtable Web API client.
+ * class-hub-client.php — client for a Drift: Surface Hub's website API.
  *
  * Deliberately small. Reads (paginated list), one write (create record, for
- * forms) and the schema endpoint (connection check). Every request is counted
- * against a monthly budget, because on Airtable's Free plan the whole
- * workspace gets 1,000 API calls a month — see CLAUDE.md "API budget".
+ * forms) and the schema endpoint (connection check). Talks to the hub's
+ * `drift-hub/v0` API (drift-hub/includes/class-api.php), whose contract is:
  *
- * Airtable also enforces 5 requests/second per base and answers 429 with a
- * mandatory 30-second back-off. Paged reads are throttled to stay under the
- * first; a 429 sets a pause transient that every request respects.
+ *   GET  {hub}/meta/bases/{base}/tables   schema
+ *   GET  {hub}/{base}/{table}             list: pageSize, offset, fields[],
+ *                                         sort[n][field|direction], maxRecords
+ *   POST {hub}/{base}/{table}             create (writable tables only)
  *
- * Token scopes needed: data.records:read (sync), data.records:write (forms,
- * optional), schema.bases:read (connection check, optional).
+ * Auth is "Authorization: Bearer hub_…", the artist's token. Errors come back
+ * as { error: { type, message } }, including 422 UNKNOWN_FIELD_NAME.
+ *
+ * The hub has no monthly call limit, but the sync still costs about one
+ * request per table: keep it that way (no per-record or per-page-view calls).
  *
  * @package Drift_Surface
  */
@@ -21,42 +24,37 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-final class Drift_Surface_Airtable {
+final class Drift_Surface_Hub_Client {
 
-	const API          = 'https://api.airtable.com/v0/';
-	const USAGE_OPTION = 'drift_surface_api_usage';
-	const PAUSE_KEY    = 'drift_surface_airtable_pause';
-	const PAGE_SIZE    = 100;
-	const MAX_PAGES    = 60;     // 6,000 rows — a runaway guard, not a real limit (Free plan caps a base at 1,000).
-	const THROTTLE_US  = 220000; // ~4.5 req/s, under Airtable's 5/s per base.
+	const PAGE_SIZE = 100;
+	const MAX_PAGES = 60; // 6,000 rows — a runaway guard, not a real limit.
+
+	/** @var int Requests made during this PHP request, for the sync log. */
+	private static $calls = 0;
 
 	/* ── Requests ────────────────────────────────────────────────────── */
 
 	/**
 	 * One API request.
 	 *
-	 * @param string     $method GET|POST|PATCH.
-	 * @param string     $path   Path under /v0/, already URL-encoded per segment.
+	 * @param string     $method GET|POST.
+	 * @param string     $path   Path under the hub address, already URL-encoded per segment.
 	 * @param array      $query  Query args. List values become key[]=…; 'sort' is expanded.
 	 * @param array|null $body   JSON body for writes.
 	 * @return array|WP_Error Decoded body, or WP_Error.
 	 */
 	public static function request( string $method, string $path, array $query = [], ?array $body = null ) {
+		$hub = self::api_base();
+		if ( '' === $hub ) {
+			return new WP_Error( 'drift_surface_not_connected', __( 'No Drift: Surface Hub address saved.', 'drift-surface' ) );
+		}
+
 		$token = Drift_Surface_Settings::token();
 		if ( '' === $token ) {
-			return new WP_Error( 'drift_surface_not_connected', __( 'No Airtable token saved.', 'drift-surface' ) );
+			return new WP_Error( 'drift_surface_not_connected', __( 'No hub token saved.', 'drift-surface' ) );
 		}
 
-		$paused_until = (int) get_transient( self::PAUSE_KEY );
-		if ( $paused_until > time() ) {
-			return new WP_Error(
-				'drift_surface_rate_limited',
-				/* translators: %d: seconds. */
-				sprintf( __( 'Airtable asked us to slow down. Retrying is allowed in %d seconds.', 'drift-surface' ), $paused_until - time() )
-			);
-		}
-
-		$url = self::api_base() . ltrim( $path, '/' );
+		$url = $hub . ltrim( $path, '/' );
 		if ( $query ) {
 			$url .= '?' . self::build_query( $query );
 		}
@@ -74,7 +72,7 @@ final class Drift_Surface_Airtable {
 			$args['body']                    = wp_json_encode( $body );
 		}
 
-		self::record_call();
+		self::$calls++;
 		$response = wp_remote_request( $url, $args );
 
 		if ( is_wp_error( $response ) ) {
@@ -84,20 +82,22 @@ final class Drift_Surface_Airtable {
 		$code    = (int) wp_remote_retrieve_response_code( $response );
 		$decoded = json_decode( (string) wp_remote_retrieve_body( $response ), true );
 
-		if ( 429 === $code ) {
-			set_transient( self::PAUSE_KEY, time() + 35, 35 );
-			return new WP_Error( 'drift_surface_rate_limited', __( 'Airtable rate limit hit (HTTP 429). Paused for 35 seconds.', 'drift-surface' ) );
-		}
-
 		if ( $code < 200 || $code >= 300 || ! is_array( $decoded ) ) {
 			$message = is_array( $decoded ) && isset( $decoded['error'] )
 				? ( is_array( $decoded['error'] ) ? (string) ( $decoded['error']['message'] ?? $decoded['error']['type'] ?? '' ) : (string) $decoded['error'] )
 				: '';
 			$type    = is_array( $decoded ) && is_array( $decoded['error'] ?? null ) ? (string) ( $decoded['error']['type'] ?? '' ) : '';
+
+			if ( 401 === $code ) {
+				// The usual cause besides a wrong token: the hub's server strips the
+				// Authorization header (the hub README has the .htaccess fix).
+				$message = trim( $message . ' ' . __( 'Check the Base ID and token. If both are right, the hub\'s server may be dropping the Authorization header.', 'drift-surface' ) );
+			}
+
 			return new WP_Error(
-				'drift_surface_airtable_http',
-				/* translators: 1: HTTP status, 2: Airtable's message. */
-				trim( sprintf( __( 'Airtable returned HTTP %1$d. %2$s', 'drift-surface' ), $code, $message ) ),
+				'drift_surface_hub_http',
+				/* translators: 1: HTTP status, 2: the hub's message. */
+				trim( sprintf( __( 'The hub returned HTTP %1$d. %2$s', 'drift-surface' ), $code, $message ) ),
 				[ 'status' => $code, 'type' => $type, 'message' => $message ]
 			);
 		}
@@ -110,18 +110,18 @@ final class Drift_Surface_Airtable {
 	 * than a partial list if any page fails — a partial list would make the
 	 * sync trash everything on the missing pages.
 	 *
-	 * @param string $table Table name or ID.
-	 * @param array  $args  Optional: view, filterByFormula, fields (list), sort (list of [field, direction]).
+	 * @param string $table Table name.
+	 * @param array  $args  Optional: fields (list), sort (list of [field, direction]), maxRecords.
 	 * @return array|WP_Error
 	 */
 	public static function list_records( string $table, array $args = [] ) {
 		$base = (string) Drift_Surface_Settings::get( 'base_id' );
 		if ( ! Drift_Surface_Settings::valid_base_id( $base ) ) {
-			return new WP_Error( 'drift_surface_not_connected', __( 'No valid Airtable base ID saved.', 'drift-surface' ) );
+			return new WP_Error( 'drift_surface_not_connected', __( 'No valid Base ID saved.', 'drift-surface' ) );
 		}
 
 		$query = [ 'pageSize' => self::PAGE_SIZE ];
-		foreach ( [ 'view', 'filterByFormula', 'fields', 'sort', 'maxRecords' ] as $key ) {
+		foreach ( [ 'fields', 'sort', 'maxRecords' ] as $key ) {
 			if ( ! empty( $args[ $key ] ) ) {
 				$query[ $key ] = $args[ $key ];
 			}
@@ -134,7 +134,6 @@ final class Drift_Surface_Airtable {
 		do {
 			if ( '' !== $offset ) {
 				$query['offset'] = $offset;
-				usleep( self::THROTTLE_US );
 			}
 
 			$body = self::request( 'GET', rawurlencode( $base ) . '/' . rawurlencode( $table ), $query );
@@ -156,16 +155,16 @@ final class Drift_Surface_Airtable {
 	}
 
 	/**
-	 * list_records(), but a field Airtable doesn't know (deleted, renamed, or
-	 * not added to this base yet) is dropped from the request and the call
-	 * retried, rather than failing the whole table. Each retry is one more
-	 * API call, and only happens while a field is missing.
+	 * list_records(), but a field the hub doesn't know (renamed, or added to
+	 * the map before the hub's schema) is dropped from the request and the
+	 * call retried, rather than failing the whole table. Each retry is one
+	 * more request, and only happens while a field is missing.
 	 *
 	 * Fields in $protected are never dropped: without them the rows can't be
 	 * read correctly (title, status field, sort), so the table fails as
 	 * before and its posts are left alone.
 	 *
-	 * @param string   $table     Table name or ID.
+	 * @param string   $table     Table name.
 	 * @param array    $args      As list_records(); 'fields' should be set.
 	 * @param string[] $protected Fields that must exist.
 	 * @return array{records: array, missing: string[]}|WP_Error
@@ -186,14 +185,13 @@ final class Drift_Surface_Airtable {
 
 			$missing[]      = $field;
 			$args['fields'] = array_values( array_diff( (array) $args['fields'], [ $field ] ) );
-			usleep( self::THROTTLE_US );
 		}
 
 		return $records;
 	}
 
 	/**
-	 * The field name from Airtable's 422 UNKNOWN_FIELD_NAME error
+	 * The field name from the hub's 422 UNKNOWN_FIELD_NAME error
 	 * ('Unknown field name: "Live Embed"'), or '' for any other error.
 	 */
 	private static function unknown_field( WP_Error $error ): string {
@@ -205,7 +203,7 @@ final class Drift_Surface_Airtable {
 	}
 
 	/**
-	 * Creates one record. typecast lets Airtable coerce strings into select
+	 * Creates one record. typecast lets the hub coerce strings into select
 	 * options, dates and so on.
 	 *
 	 * @return array|WP_Error The created record.
@@ -213,7 +211,7 @@ final class Drift_Surface_Airtable {
 	public static function create_record( string $table, array $fields ) {
 		$base = (string) Drift_Surface_Settings::get( 'base_id' );
 		if ( ! Drift_Surface_Settings::valid_base_id( $base ) ) {
-			return new WP_Error( 'drift_surface_not_connected', __( 'No valid Airtable base ID saved.', 'drift-surface' ) );
+			return new WP_Error( 'drift_surface_not_connected', __( 'No valid Base ID saved.', 'drift-surface' ) );
 		}
 
 		return self::request(
@@ -225,14 +223,14 @@ final class Drift_Surface_Airtable {
 	}
 
 	/**
-	 * Table/field schema for the connection check. Needs schema.bases:read.
+	 * Table/field schema for the connection check.
 	 *
 	 * @return array|WP_Error [ table name => [ field name => type ] ].
 	 */
 	public static function schema() {
 		$base = (string) Drift_Surface_Settings::get( 'base_id' );
 		if ( ! Drift_Surface_Settings::valid_base_id( $base ) ) {
-			return new WP_Error( 'drift_surface_not_connected', __( 'No valid Airtable base ID saved.', 'drift-surface' ) );
+			return new WP_Error( 'drift_surface_not_connected', __( 'No valid Base ID saved.', 'drift-surface' ) );
 		}
 
 		$body = self::request( 'GET', 'meta/bases/' . rawurlencode( $base ) . '/tables' );
@@ -256,7 +254,7 @@ final class Drift_Surface_Airtable {
 	}
 
 	/**
-	 * Airtable's array query syntax: fields[]=A&fields[]=B and
+	 * The hub's array query syntax: fields[]=A&fields[]=B and
 	 * sort[0][field]=X&sort[0][direction]=asc. http_build_query() would write
 	 * fields[0]=…, so this builds it by hand.
 	 */
@@ -290,51 +288,20 @@ final class Drift_Surface_Airtable {
 		return implode( '&', $parts );
 	}
 
-	/* ── Data source ─────────────────────────────────────────────────── */
+	/* ── Hub address ─────────────────────────────────────────────────── */
 
 	/**
-	 * Where requests go: Airtable, or a Drift: Surface Hub (which speaks the same API).
-	 * Set on Drift: Surface → Connection → Data source, or with
-	 * DRIFT_SURFACE_API_BASE in wp-config.php.
+	 * The hub's API address, with a trailing slash, or '' when none is set.
+	 * Set on Drift: Surface → Connection, or with DRIFT_SURFACE_HUB_URL in
+	 * wp-config.php.
 	 */
 	public static function api_base(): string {
 		$base = (string) Drift_Surface_Settings::get( 'api_base', '' );
-		return ( '' !== $base && filter_var( $base, FILTER_VALIDATE_URL ) ) ? trailingslashit( $base ) : self::API;
+		return Drift_Surface_Settings::valid_hub_url( $base ) ? trailingslashit( $base ) : '';
 	}
 
-	/** True when syncing from a Drift: Surface Hub rather than Airtable. */
-	public static function is_hub(): bool {
-		return self::API !== self::api_base();
-	}
-
-	/* ── API budget ──────────────────────────────────────────────────── */
-
-	private static function month(): string {
-		return gmdate( 'Y-m' );
-	}
-
-	private static function record_call(): void {
-		$usage = self::usage();
-		$usage['calls']++;
-		update_option( self::USAGE_OPTION, $usage, false );
-	}
-
-	/** @return array{month: string, calls: int} This calendar month (UTC), as Airtable counts it. */
-	public static function usage(): array {
-		$usage = get_option( self::USAGE_OPTION, [] );
-		if ( ! is_array( $usage ) || ( $usage['month'] ?? '' ) !== self::month() ) {
-			$usage = [ 'month' => self::month(), 'calls' => 0 ];
-		}
-		$usage['calls'] = (int) $usage['calls'];
-		return $usage;
-	}
-
-	public static function budget(): int {
-		return (int) Drift_Surface_Settings::get( 'api_budget', 1000 );
-	}
-
-	public static function over_budget(): bool {
-		// A Drift: Surface Hub has no monthly call limit.
-		return ! self::is_hub() && self::usage()['calls'] >= self::budget();
+	/** Requests made so far in this PHP request. */
+	public static function calls(): int {
+		return self::$calls;
 	}
 }

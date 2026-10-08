@@ -1,6 +1,6 @@
 <?php
 /**
- * class-sync-engine.php — one-way Airtable → WordPress sync, driven entirely
+ * class-sync-engine.php — one-way Drift: Surface Hub → WordPress sync, driven entirely
  * by the product map.
  *
  * The rules:
@@ -8,7 +8,7 @@
  *   - Fetch every page of a table, or nothing: a failed page aborts that
  *     table, never acts on a partial list (which would bin everything on the
  *     missing pages).
- *   - Airtable owns the posts it creates (tagged with META_ID). Posts made by
+ *   - The sync owns the posts it creates (tagged with META_ID). Posts made by
  *     hand in wp-admin are never touched.
  *   - A content hash per post skips rows that haven't changed.
  *   - Rows that disappear (deleted, filtered out, or hidden via the entity's
@@ -20,12 +20,12 @@
  *     table → an option array.
  *   - Linked records → WordPress post IDs (resolve_links()).
  *   - Image imports are capped per run; the remainder continues a minute
- *     later from cached records, so it costs no extra API calls.
+ *     later from cached records, so it costs no extra hub requests.
  *   - A run lock, run status, activity log and page-cache purge.
  *
- * Templates never call Airtable. They read normal WordPress data that this
- * class wrote at sync time (theme CLAUDE.md rule: Airtable stays out of the
- * render path).
+ * Templates never call the hub. They read normal WordPress data that this
+ * class wrote at sync time (CLAUDE.md rule: the hub stays out of the render
+ * path).
  *
  * @package Drift_Surface
  */
@@ -36,8 +36,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 final class Drift_Surface_Sync_Engine {
 
-	const META_ID      = '_drift_surface_airtable_id';
-	const META_HASH    = '_drift_surface_airtable_hash';
+	const META_ID      = '_drift_surface_record_id';
+	const META_HASH    = '_drift_surface_record_hash';
 	const META_ENTITY  = '_drift_surface_entity';
 	const LINKS_PREFIX = '_drift_surface_links_';
 
@@ -86,7 +86,7 @@ final class Drift_Surface_Sync_Engine {
 	 *
 	 * @param string $trigger Label for the log/status (manual, publish, daily, continue…).
 	 * @param array  $opts    force (bool): ignore hashes. use_cache (bool): reuse the
-	 *                        records fetched by the previous run instead of calling Airtable.
+	 *                        records fetched by the previous run instead of calling the hub.
 	 * @return array{ok: bool, messages: string[]}
 	 */
 	public static function run( string $trigger = 'manual', array $opts = [] ): array {
@@ -94,7 +94,7 @@ final class Drift_Surface_Sync_Engine {
 		$use_cache = ! empty( $opts['use_cache'] );
 
 		if ( ! Drift_Surface_Settings::is_connected() ) {
-			return self::finish_early( __( 'Not connected to Airtable — add the base ID and token on Drift: Surface → Connection.', 'drift-surface' ) );
+			return self::finish_early( __( 'Not connected to a Drift: Surface Hub — add the hub address, Base ID and token on Drift: Surface → Connection.', 'drift-surface' ) );
 		}
 
 		if ( get_transient( self::LOCK ) ) {
@@ -118,7 +118,7 @@ final class Drift_Surface_Sync_Engine {
 		$map      = Drift_Surface_Map::current();
 		$messages = [];
 		$ok       = true;
-		$calls    = Drift_Surface_Airtable::usage()['calls'];
+		$calls    = Drift_Surface_Hub_Client::calls();
 
 		Drift_Surface_Media::reset_run();
 
@@ -156,7 +156,7 @@ final class Drift_Surface_Sync_Engine {
 			delete_transient( self::CACHE );
 		}
 
-		$calls_used = Drift_Surface_Airtable::usage()['calls'] - $calls;
+		$calls_used = Drift_Surface_Hub_Client::calls() - $calls;
 
 		$status = array_merge( self::status(), [
 			'last_run'       => time(),
@@ -176,8 +176,8 @@ final class Drift_Surface_Sync_Engine {
 		self::purge_page_caches();
 
 		$summary = sprintf(
-			/* translators: 1: trigger, 2: seconds, 3: API calls, 4: images imported. */
-			__( 'Sync (%1$s) finished in %2$ss — %3$d API calls, %4$d images imported.', 'drift-surface' ),
+			/* translators: 1: trigger, 2: seconds, 3: hub requests, 4: images imported. */
+			__( 'Sync (%1$s) finished in %2$ss — %3$d hub requests, %4$d images imported.', 'drift-surface' ),
 			$trigger,
 			$status['duration'],
 			$calls_used,
@@ -218,8 +218,8 @@ final class Drift_Surface_Sync_Engine {
 	 * Every table the map needs. A failed table is stored as a WP_Error so
 	 * its sync is skipped (existing posts left alone) while others continue.
 	 *
-	 * A mapped field missing from the base (e.g. a base not yet migrated to
-	 * the latest template) is skipped, not fatal: its name goes in
+	 * A mapped field missing from the base (e.g. a hub whose schema is older
+	 * than the map) is skipped, not fatal: its name goes in
 	 * '__missing' and the sync keeps that field's current WordPress values.
 	 *
 	 * @return array<string, mixed> Keyed by entity key, plus '__settings' and '__missing'.
@@ -233,7 +233,7 @@ final class Drift_Surface_Sync_Engine {
 				$fields[] = (string) $map['publish']['field'];
 			}
 			$out['__settings'] = self::unwrap(
-				Drift_Surface_Airtable::list_records_lenient(
+				Drift_Surface_Hub_Client::list_records_lenient(
 					$map['settings']['table'],
 					[ 'maxRecords' => 1, 'fields' => array_values( array_unique( $fields ) ) ]
 				),
@@ -243,15 +243,12 @@ final class Drift_Surface_Sync_Engine {
 		}
 
 		foreach ( $map['entities'] as $key => $entity ) {
-			usleep( Drift_Surface_Airtable::THROTTLE_US );
 			$out[ $key ] = self::unwrap(
-				Drift_Surface_Airtable::list_records_lenient(
+				Drift_Surface_Hub_Client::list_records_lenient(
 					$entity['table'],
 					[
-						'view'            => $entity['view'],
-						'filterByFormula' => $entity['filter'],
-						'sort'            => $entity['sort'],
-						'fields'          => Drift_Surface_Map::requested_fields( $entity ),
+						'sort'   => $entity['sort'],
+						'fields' => Drift_Surface_Map::requested_fields( $entity ),
 					],
 					Drift_Surface_Map::structural_fields( $entity )
 				),
@@ -282,11 +279,11 @@ final class Drift_Surface_Sync_Engine {
 	}
 
 	/**
-	 * Log line and status message for fields skipped because Airtable
+	 * Log line and status message for fields skipped because the hub
 	 * doesn't have them. '' when none were skipped.
 	 *
 	 * @param string   $label   Table label.
-	 * @param string[] $missing Airtable field names.
+	 * @param string[] $missing Hub field names.
 	 */
 	private static function missing_note( string $label, array $missing ): string {
 		if ( ! $missing ) {
@@ -294,7 +291,7 @@ final class Drift_Surface_Sync_Engine {
 		}
 		$note = sprintf(
 			/* translators: 1: table, 2: comma-separated field names. */
-			__( '%1$s: field(s) not in Airtable, skipped and existing values kept: %2$s. Add them to the base (Drift: Surface → Connection → Check connection lists everything missing).', 'drift-surface' ),
+			__( '%1$s: field(s) not in the hub, skipped and existing values kept: %2$s. Update the hub so its schema matches this plugin (Drift: Surface → Connection → Check connection lists everything missing).', 'drift-surface' ),
 			$label,
 			'"' . implode( '", "', $missing ) . '"'
 		);
@@ -307,7 +304,7 @@ final class Drift_Surface_Sync_Engine {
 	/**
 	 * @param array               $map     Product map.
 	 * @param array|WP_Error|null $records Fetched settings records.
-	 * @param string[]            $missing Fields Airtable doesn't have; their stored values are kept.
+	 * @param string[]            $missing Fields the hub doesn't have; their stored values are kept.
 	 */
 	private static function sync_settings( array $map, $records, array $missing = [] ): array {
 		$spec  = $map['settings'];
@@ -329,7 +326,7 @@ final class Drift_Surface_Sync_Engine {
 		$fields   = (array) ( $record['fields'] ?? [] );
 		$previous = get_option( $spec['option'], [] );
 		$previous = is_array( $previous ) ? $previous : [];
-		$values   = [ '_airtable_id' => (string) $record['id'] ];
+		$values   = [ '_record_id' => (string) $record['id'] ];
 
 		foreach ( $spec['fields'] as $name => $field ) {
 			$key = (string) $field['to'];
@@ -374,7 +371,7 @@ final class Drift_Surface_Sync_Engine {
 	 *
 	 * @param array    $fields  Settings field specs from the map.
 	 * @param array    $values  Values just saved to the settings option.
-	 * @param string[] $missing Fields Airtable doesn't have.
+	 * @param string[] $missing Fields the hub doesn't have.
 	 */
 	private static function mirror_wp_options( array $fields, array $values, array $missing ): void {
 		foreach ( $fields as $name => $field ) {
@@ -403,7 +400,7 @@ final class Drift_Surface_Sync_Engine {
 	 * @param array               $entity  Entity spec from the map.
 	 * @param array|WP_Error|null $records Fetched records.
 	 * @param bool                $force   Ignore hashes.
-	 * @param string[]            $missing Fields Airtable doesn't have. They're taken out of the
+	 * @param string[]            $missing Fields the hub doesn't have. They're taken out of the
 	 *                                     spec, so save_post() leaves their current values alone.
 	 */
 	private static function sync_entity( array $entity, $records, bool $force, array $missing = [] ): array {
@@ -441,7 +438,7 @@ final class Drift_Surface_Sync_Engine {
 				continue; // Blank row — no unnamed posts.
 			}
 			if ( $entity['status_field'] && ! self::truthy( $fields[ $entity['status_field'] ] ?? null ) ) {
-				continue; // Hidden in Airtable — treated as removed below.
+				continue; // Hidden in the hub — treated as removed below.
 			}
 
 			$row++;
@@ -502,7 +499,7 @@ final class Drift_Surface_Sync_Engine {
 	}
 
 	/**
-	 * Creates or updates one post from one Airtable row.
+	 * Creates or updates one post from one hub record.
 	 *
 	 * @return array{post_id: int, complete: bool} complete=false means an image
 	 *                                             is still pending, so don't store the hash.
@@ -657,7 +654,7 @@ final class Drift_Surface_Sync_Engine {
 	}
 
 	/**
-	 * Synced posts of one type, any status, keyed by Airtable record ID.
+	 * Synced posts of one type, any status, keyed by hub record ID.
 	 *
 	 * @return array<string, WP_Post>
 	 */
@@ -681,7 +678,7 @@ final class Drift_Surface_Sync_Engine {
 	/* ── Linked records ──────────────────────────────────────────────── */
 
 	/**
-	 * Turns stored Airtable record IDs into WordPress post IDs for every
+	 * Turns stored hub record IDs into WordPress post IDs for every
 	 * 'link' field, once all tables have synced (a release can link to tracks
 	 * that were only created in this run). Links to rows that aren't on the
 	 * site are dropped. Order is kept.
@@ -746,9 +743,9 @@ final class Drift_Surface_Sync_Engine {
 	/* ── Value helpers ───────────────────────────────────────────────── */
 
 	/**
-	 * Converts one Airtable value to what WordPress stores.
+	 * Converts one hub value to what WordPress stores.
 	 *
-	 * @param mixed  $raw  Airtable value.
+	 * @param mixed  $raw  Hub value.
 	 * @param string $type Map field type.
 	 * @return mixed
 	 */

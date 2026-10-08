@@ -57,7 +57,7 @@ class Drift_Surface_Admin_Access {
     /**
      * Top-level menus hidden from clients until someone saves a choice:
      * Appearance, Plugins, Users, Tools, Settings and ACF. Band members get
-     * their content (synced from Airtable) and nothing they can break.
+     * their content (synced from the hub) and nothing they can break.
      */
     public static function default_hidden_menus(): array {
         return [

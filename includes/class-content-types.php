@@ -7,7 +7,7 @@
  * theme switch. Themes adjust registration with the
  * `drift_surface_post_type_args` / `drift_surface_taxonomy_args` filters.
  *
- * Also shows a "managed in Airtable" notice on synced items' edit screens,
+ * Also shows a "managed in the hub" notice on synced items' edit screens,
  * since anything edited in wp-admin is overwritten by the next sync.
  *
  * @package Drift_Surface
@@ -98,7 +98,7 @@ final class Drift_Surface_Content_Types {
 	}
 
 	/**
-	 * "This item is managed in Airtable" on synced posts' edit screens.
+	 * "This item is managed in the hub" on synced posts' edit screens.
 	 *
 	 * @param WP_Post $post Post being edited.
 	 */
@@ -108,15 +108,15 @@ final class Drift_Surface_Content_Types {
 		}
 
 		$entity = Drift_Surface_Map::entity_for_post_type( $post->post_type );
-		$table  = $entity['table'] ?? __( 'Airtable', 'drift-surface' );
+		$table  = $entity['table'] ?? __( 'hub', 'drift-surface' );
 		?>
 		<div class="notice notice-info inline ds-synced-notice" style="margin:12px 0;">
 			<p>
-				<strong><?php esc_html_e( 'Managed in Airtable.', 'drift-surface' ); ?></strong>
+				<strong><?php esc_html_e( 'Managed in the Drift: Surface Hub.', 'drift-surface' ); ?></strong>
 				<?php
 				printf(
-					/* translators: %s: Airtable table name. */
-					esc_html__( 'This item comes from the "%s" table. Changes made here are replaced the next time the site publishes — edit it in Airtable instead.', 'drift-surface' ),
+					/* translators: %s: hub table name. */
+					esc_html__( 'This item comes from the "%s" table. Changes made here are replaced the next time the site publishes — edit it in the hub instead.', 'drift-surface' ),
 					esc_html( $table )
 				);
 				?>

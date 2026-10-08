@@ -1,12 +1,11 @@
 <?php
 /**
- * class-media.php — Airtable attachments into the media library, and
- * Airtable rich text into safe HTML.
+ * class-media.php — hub attachments into the media library, and hub rich
+ * text into safe HTML.
  *
- * The sideload is keyed by
- * Airtable's stable attachment ID, never its URL: attachment URLs are signed,
- * change on every API response and expire a couple of hours after issue, so
- * hotlinking them breaks pages and page caches.
+ * The sideload is keyed by the hub's attachment ID, never its URL: URLs
+ * change when files are renamed or the hub moves, and hotlinking would put
+ * the hub in the render path.
  *
  * Imports are capped per sync run (Settings → image_batch) so a first sync of
  * a 200-photo gallery can't time out. Anything over the cap is reported back
@@ -22,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Drift_Surface_Media {
 
 	const MAP_OPTION = 'drift_surface_media_map';
-	const META_ID    = '_drift_surface_airtable_attachment_id';
+	const META_ID    = '_drift_surface_hub_attachment_id';
 
 	/** @var int Imports made in this request. */
 	private static $imported = 0;
@@ -44,25 +43,25 @@ final class Drift_Surface_Media {
 	}
 
 	/**
-	 * Attachment ID for an Airtable attachment, importing it if needed.
+	 * Attachment ID for a hub attachment, importing it if needed.
 	 *
-	 * @param array $attachment One item from an Airtable attachment field.
+	 * @param array $attachment One item from a hub attachment field.
 	 * @param int   $parent_id  Post to attach to, 0 for none.
 	 * @return int Attachment ID, or 0 (failed or deferred — the caller should retry next run).
 	 */
 	public static function attachment_id( array $attachment, int $parent_id = 0 ): int {
-		$airtable_id = (string) ( $attachment['id'] ?? '' );
+		$hub_id = (string) ( $attachment['id'] ?? '' );
 		$source_url  = (string) ( $attachment['url'] ?? '' );
 
-		if ( '' === $airtable_id || '' === $source_url ) {
+		if ( '' === $hub_id || '' === $source_url ) {
 			return 0;
 		}
 
 		$map = get_option( self::MAP_OPTION, [] );
 		$map = is_array( $map ) ? $map : [];
 
-		if ( isset( $map[ $airtable_id ] ) && wp_get_attachment_url( (int) $map[ $airtable_id ] ) ) {
-			return (int) $map[ $airtable_id ];
+		if ( isset( $map[ $hub_id ] ) && wp_get_attachment_url( (int) $map[ $hub_id ] ) ) {
+			return (int) $map[ $hub_id ];
 		}
 
 		$cap = max( 1, (int) Drift_Surface_Settings::get( 'image_batch', 20 ) );
@@ -73,7 +72,7 @@ final class Drift_Surface_Media {
 
 		$type = strtolower( (string) ( $attachment['type'] ?? '' ) );
 		if ( $type && ! in_array( $type, [ 'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/svg+xml', 'application/pdf' ], true ) ) {
-			Drift_Surface_Log::warning( sprintf( 'Skipped attachment "%s": file type %s is not allowed.', (string) ( $attachment['filename'] ?? $airtable_id ), $type ) );
+			Drift_Surface_Log::warning( sprintf( 'Skipped attachment "%s": file type %s is not allowed.', (string) ( $attachment['filename'] ?? $hub_id ), $type ) );
 			return 0;
 		}
 
@@ -93,7 +92,7 @@ final class Drift_Surface_Media {
 
 		$attachment_id = media_handle_sideload(
 			[
-				'name'     => sanitize_file_name( (string) ( $attachment['filename'] ?? $airtable_id ) ),
+				'name'     => sanitize_file_name( (string) ( $attachment['filename'] ?? $hub_id ) ),
 				'tmp_name' => $tmp,
 			],
 			$parent_id
@@ -107,16 +106,16 @@ final class Drift_Surface_Media {
 			return 0;
 		}
 
-		update_post_meta( $attachment_id, self::META_ID, $airtable_id );
+		update_post_meta( $attachment_id, self::META_ID, $hub_id );
 
-		$map[ $airtable_id ] = $attachment_id;
+		$map[ $hub_id ] = $attachment_id;
 		update_option( self::MAP_OPTION, $map, false );
 
 		return (int) $attachment_id;
 	}
 
 	/**
-	 * Airtable rich text (Markdown) → safe HTML. Escapes first, so nothing in
+	 * Hub rich text (Markdown) → safe HTML. Escapes first, so nothing in
 	 * the source can inject markup. Handles **bold**, _italic_, [links](…),
 	 * # headings (h3 at most — the page owns h1/h2), lists and paragraphs.
 	 */
@@ -177,7 +176,7 @@ final class Drift_Surface_Media {
 
 	/**
 	 * Iframe-only embed code (store widgets, tour-date players) from an
-	 * Airtable Long text field. Everything except <iframe> is stripped, so a
+	 * hub Long Text field. Everything except <iframe> is stripped, so a
 	 * pasted <script> widget comes through as nothing rather than running on
 	 * the site. Only https sources survive, and srcdoc is never allowed (it
 	 * would run in the site's own origin). Text around the iframes is dropped.
@@ -212,7 +211,7 @@ final class Drift_Surface_Media {
 	}
 
 	/**
-	 * Plain text from any Airtable value — strings, numbers, booleans,
+	 * Plain text from any hub value — strings, numbers, booleans,
 	 * lookups/rollups (arrays), AI-field envelopes ({value: …}), collaborators.
 	 */
 	public static function plain( $value ): string {

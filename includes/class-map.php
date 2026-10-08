@@ -1,7 +1,7 @@
 <?php
 /**
  * class-map.php — loads the product map: the one file that says which
- * Airtable tables and fields become which WordPress content for a Drift: Surface
+ * hub tables and fields become which WordPress content for a Drift: Surface
  * product (maps/surface.php, later maps/cardiotrack.php …).
  *
  * The sync engine, content types, forms and setup wizard are all generic and
@@ -97,7 +97,7 @@ final class Drift_Surface_Map {
 		}
 
 		if ( is_array( $map['settings'] ) ) {
-			$map['settings'] = array_merge( [ 'table' => '', 'option' => 'encore_site_settings', 'fields' => [] ], $map['settings'] );
+			$map['settings'] = array_merge( [ 'table' => '', 'option' => 'surface_site_settings', 'fields' => [] ], $map['settings'] );
 			$map['settings']['fields'] = self::normalise_fields( (array) $map['settings']['fields'] );
 		}
 
@@ -112,8 +112,6 @@ final class Drift_Surface_Map {
 					'table'        => '',
 					'post_type'    => '',
 					'register'     => false,
-					'view'         => '',
-					'filter'       => '',
 					'sort'         => [],
 					'title'        => 'Name',
 					'slug'         => '',
@@ -185,8 +183,8 @@ final class Drift_Surface_Map {
 	}
 
 	/**
-	 * The Airtable fields an entity needs, so list requests ask for exactly
-	 * those (smaller payloads; hidden/private columns never leave Airtable).
+	 * The hub fields an entity needs, so list requests ask for exactly
+	 * those (smaller payloads; private fields never leave the hub).
 	 *
 	 * @return string[]
 	 */
@@ -205,7 +203,7 @@ final class Drift_Surface_Map {
 
 	/**
 	 * The fields an entity can't sync without: title, slug, status field,
-	 * order and sort fields. The sync never drops these when Airtable says
+	 * order and sort fields. The sync never drops these when the hub says
 	 * a field is missing (dropping the status field would bin every row).
 	 *
 	 * @return string[]
@@ -229,7 +227,7 @@ final class Drift_Surface_Map {
 	}
 
 	/**
-	 * Everything the map expects in Airtable: [ table => [ field, … ] ].
+	 * Everything the map expects in the hub: [ table => [ field, … ] ].
 	 * Used by the Connection tab's schema check.
 	 */
 	public static function expected_schema(): array {

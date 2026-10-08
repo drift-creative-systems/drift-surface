@@ -343,7 +343,7 @@ final class Drift_Surface_Page_Creator {
 		$canvas = imagecreatetruecolor( $w, $h );
 		imagefill( $canvas, 0, 0, imagecolorallocate( $canvas, 226, 236, 243 ) ); // #e2ecf3
 		$fg    = imagecolorallocate( $canvas, 120, 130, 140 );
-		$label = 'Image placeholder — replace in Airtable';
+		$label = 'Image placeholder — replace in the hub';
 		imagestring( $canvas, 5, (int) ( ( $w - imagefontwidth( 5 ) * strlen( $label ) ) / 2 ), (int) ( ( $h - imagefontheight( 5 ) ) / 2 ), $label, $fg );
 
 		$upload = wp_upload_dir();

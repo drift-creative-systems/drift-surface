@@ -1,22 +1,23 @@
 <?php
 /**
  * class-forms.php — front-end forms (booking enquiries, newsletter) written
- * back to Airtable, the one place Drift: Surface writes rather than reads.
+ * back to the Drift: Surface Hub, the one place Drift: Surface writes rather
+ * than reads.
  *
  * The theme renders the form markup and posts to admin-ajax.php with
  * action=drift_surface_form, form=<form key from the map>, a nonce (all three
  * from drift_surface_form_hidden_fields()), and the field names the map lists. This class
- * validates, rate-limits, creates the Airtable record (1 API call) and
- * emails a copy to the address in the map's 'notify' setting — so an
- * enquiry is never lost if Airtable is unreachable or over its limit.
+ * validates, rate-limits, creates the hub record (1 request) and emails a
+ * copy to the address in the map's 'notify' setting — so an enquiry is
+ * never lost if the hub is unreachable.
  *
  * Map shape (maps/surface.php → 'forms'):
  *   'enquiry' => [
  *       'table'    => 'Enquiries',
- *       'fields'   => [ 'name' => 'Name', 'email' => 'Email', … ], // form key => Airtable field
+ *       'fields'   => [ 'name' => 'Name', 'email' => 'Email', … ], // form key => hub field
  *       'required' => [ 'name', 'email', 'message' ],
  *       'email'    => [ 'email' ],                                   // validated as email
- *       'notify'   => 'booking_email',                               // settings key holding the address; false = only if Airtable fails
+ *       'notify'   => 'booking_email',                               // settings key holding the address; false = only if the hub fails
  *       'subject'  => 'New enquiry from the website',
  *   ]
  *
@@ -79,7 +80,7 @@ final class Drift_Surface_Forms {
 		$values  = [];
 		$invalid = [];
 
-		foreach ( (array) $spec['fields'] as $key => $airtable_field ) {
+		foreach ( (array) $spec['fields'] as $key => $hub_field ) {
 			$raw   = $data[ $key ] ?? '';
 			$value = is_array( $raw ) ? array_map( 'sanitize_text_field', $raw ) : sanitize_textarea_field( (string) $raw );
 
@@ -95,7 +96,7 @@ final class Drift_Surface_Forms {
 			}
 
 			if ( '' !== $value && [] !== $value ) {
-				$values[ (string) $airtable_field ] = is_string( $value ) ? mb_substr( $value, 0, 5000 ) : $value;
+				$values[ (string) $hub_field ] = is_string( $value ) ? mb_substr( $value, 0, 5000 ) : $value;
 			}
 		}
 
@@ -104,17 +105,17 @@ final class Drift_Surface_Forms {
 		}
 
 		/**
-		 * Filters the Airtable fields before a form record is created.
+		 * Filters the hub fields before a form record is created.
 		 *
-		 * @param array  $values Airtable field => value.
+		 * @param array  $values Hub field => value.
 		 * @param string $form   Form key.
 		 * @param array  $data   Raw input.
 		 */
 		$values = (array) apply_filters( 'drift_surface_form_values', $values, $form, $data );
 
-		$created = Drift_Surface_Airtable::create_record( (string) $spec['table'], $values );
+		$created = Drift_Surface_Hub_Client::create_record( (string) $spec['table'], $values );
 		if ( is_wp_error( $created ) ) {
-			Drift_Surface_Log::error( sprintf( 'Form "%s" could not be saved to Airtable — %s. Email copy sent instead.', $form, $created->get_error_message() ), 'forms' );
+			Drift_Surface_Log::error( sprintf( 'Form "%s" could not be saved to the hub — %s. Email copy sent instead.', $form, $created->get_error_message() ), 'forms' );
 		}
 
 		self::notify( $spec, $values, is_wp_error( $created ) );
@@ -125,9 +126,9 @@ final class Drift_Surface_Forms {
 	}
 
 	/** Email copy to the address held in the synced settings (e.g. booking_email). */
-	private static function notify( array $spec, array $values, bool $airtable_failed ): void {
-		if ( array_key_exists( 'notify', $spec ) && false === $spec['notify'] && ! $airtable_failed ) {
-			return; // e.g. newsletter signups: Airtable is the record, no email needed.
+	private static function notify( array $spec, array $values, bool $hub_failed ): void {
+		if ( array_key_exists( 'notify', $spec ) && false === $spec['notify'] && ! $hub_failed ) {
+			return; // e.g. newsletter signups: the hub is the record, no email needed.
 		}
 
 		$map      = Drift_Surface_Map::current();
@@ -145,9 +146,9 @@ final class Drift_Surface_Forms {
 		foreach ( $values as $field => $value ) {
 			$lines[] = $field . ': ' . ( is_array( $value ) ? implode( ', ', $value ) : $value );
 		}
-		if ( $airtable_failed ) {
+		if ( $hub_failed ) {
 			$lines[] = '';
-			$lines[] = __( '(This message could not be saved to Airtable — please add it by hand.)', 'drift-surface' );
+			$lines[] = __( '(This message could not be saved to the hub — please add it there by hand.)', 'drift-surface' );
 		}
 
 		$headers = [];

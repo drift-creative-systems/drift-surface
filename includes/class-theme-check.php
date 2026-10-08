@@ -10,7 +10,7 @@
  * affected, so the plugin stays product-agnostic.
  *
  * The matching check on the other side lives in the theme
- * (encore-theme/inc/requirements.php).
+ * (surface-theme/inc/requirements.php).
  *
  * @package Drift_Surface
  */

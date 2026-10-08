@@ -140,9 +140,6 @@
 /* Numbers */
 .ds-big { margin: 4px 0; font: 600 30px/1.2 var(--ds-display); letter-spacing: -.02em; color: var(--ds-ink); }
 .ds-big span { font: 400 15px var(--ds-text); letter-spacing: 0; color: var(--ds-muted); }
-.ds-meter { height: 8px; margin: 8px 0 10px; border-radius: 999px; background: var(--ds-soft); overflow: hidden; }
-.ds-meter span { display: block; height: 100%; background: var(--ds-ink); border-radius: 999px; }
-.ds-meter--hot span { background: var(--ds-accent); }
 .ds-facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 12px 0 0; }
 .ds-facts dt { color: var(--ds-muted); }
 .ds-facts dd { margin: 0; }

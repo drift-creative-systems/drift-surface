@@ -252,6 +252,17 @@ final class Encore_Website_Admin_Page {
 				</div>
 				<table class="form-table" role="presentation">
 					<tr>
+						<th scope="row"><label for="ew-api-base"><?php esc_html_e( 'Data source', 'encore-website' ); ?></label></th>
+						<td>
+							<?php $ew_api_const = '' !== encore_website_constant( 'API_BASE' ); ?>
+							<input type="url" id="ew-api-base" class="regular-text code" name="encore[api_base]" value="<?php echo esc_attr( (string) Encore_Website_Settings::get( 'api_base' ) ); ?>" placeholder="<?php esc_attr_e( 'Blank = Airtable', 'encore-website' ); ?>" <?php disabled( $ew_api_const ); ?>>
+							<p class="description"><?php esc_html_e( 'Leave blank to sync from Airtable. To sync from a Drift Hub, paste the hub\'s Data source address from the artist\'s page in the hub, plus the Base ID and token shown there.', 'encore-website' ); ?></p>
+							<?php if ( $ew_api_const ) : ?>
+								<p class="description"><?php esc_html_e( 'Set by ENCORE_WEBSITE_API_BASE in wp-config.php.', 'encore-website' ); ?></p>
+							<?php endif; ?>
+						</td>
+					</tr>
+					<tr>
 						<th scope="row"><label for="ew-base"><?php esc_html_e( 'Base ID', 'encore-website' ); ?></label></th>
 						<td>
 							<input type="text" id="ew-base" class="regular-text code" name="encore[base_id]" value="<?php echo esc_attr( (string) Encore_Website_Settings::get( 'base_id' ) ); ?>" placeholder="appXXXXXXXXXXXXXX" <?php disabled( Encore_Website_Settings::base_from_constant() ); ?>>

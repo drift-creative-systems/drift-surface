@@ -3,7 +3,7 @@
  * Plugin Name:       Encore Website
  * Plugin URI:        https://github.com/drift-creative-systems/encore-website
  * Description:       Airtable-powered site engine for Encore band and artist websites. One-way Airtable → WordPress sync driven by a product map, Publish webhook, white label, admin access control and the page setup wizard.
- * Version:           2.0.0
+ * Version:           2.1.0
  * Requires at least: 6.2
  * Requires PHP:      8.0
  * Author:            Drift Creative Systems
@@ -30,7 +30,7 @@ if ( defined( 'ENCORE_WEBSITE_VERSION' ) ) {
 	return; // Already loaded (e.g. via the legacy drift-website.php loader).
 }
 
-define( 'ENCORE_WEBSITE_VERSION', '2.0.0' );
+define( 'ENCORE_WEBSITE_VERSION', '2.1.0' );
 define( 'ENCORE_WEBSITE_FILE', __FILE__ );
 define( 'ENCORE_WEBSITE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ENCORE_WEBSITE_URL', plugin_dir_url( __FILE__ ) );

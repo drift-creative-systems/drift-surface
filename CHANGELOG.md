@@ -2,7 +2,10 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [2.1.0] - 2026-10-08
+
+### Added
+- **Data source** setting (Connection tab, or `ENCORE_WEBSITE_API_BASE` in wp-config.php). Blank keeps syncing from Airtable; a Drift Hub's API address makes the site sync from the hub instead. The hub speaks the same API, so the map, sync engine, forms and publishing are unchanged. A Drift Hub has no monthly call limit, so the API budget no longer pauses the daily check on hub-connected sites.
 
 ### Changed
 - White Label default admin footer is "Website by Drift Creative Systems", linking to https://driftcreativesystems.co.uk/. Plugin Author URI points there too. Sites that saved their own footer text keep it.

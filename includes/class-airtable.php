@@ -56,7 +56,7 @@ final class Encore_Website_Airtable {
 			);
 		}
 
-		$url = self::API . ltrim( $path, '/' );
+		$url = self::api_base() . ltrim( $path, '/' );
 		if ( $query ) {
 			$url .= '?' . self::build_query( $query );
 		}
@@ -290,6 +290,23 @@ final class Encore_Website_Airtable {
 		return implode( '&', $parts );
 	}
 
+	/* ── Data source ─────────────────────────────────────────────────── */
+
+	/**
+	 * Where requests go: Airtable, or a Drift Hub (which speaks the same API).
+	 * Set on Encore Website → Connection → Data source, or with
+	 * ENCORE_WEBSITE_API_BASE in wp-config.php.
+	 */
+	public static function api_base(): string {
+		$base = (string) Encore_Website_Settings::get( 'api_base', '' );
+		return ( '' !== $base && filter_var( $base, FILTER_VALIDATE_URL ) ) ? trailingslashit( $base ) : self::API;
+	}
+
+	/** True when syncing from a Drift Hub rather than Airtable. */
+	public static function is_hub(): bool {
+		return self::API !== self::api_base();
+	}
+
 	/* ── API budget ──────────────────────────────────────────────────── */
 
 	private static function month(): string {
@@ -317,6 +334,7 @@ final class Encore_Website_Airtable {
 	}
 
 	public static function over_budget(): bool {
-		return self::usage()['calls'] >= self::budget();
+		// A Drift Hub has no monthly call limit.
+		return ! self::is_hub() && self::usage()['calls'] >= self::budget();
 	}
 }

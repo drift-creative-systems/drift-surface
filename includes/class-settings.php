@@ -22,6 +22,7 @@ final class Encore_Website_Settings {
 
 	public static function defaults(): array {
 		return [
+			'api_base'       => '', // Blank = Airtable. A Drift Hub's API address otherwise.
 			'base_id'        => '',
 			'token'          => '', // Sealed.
 			'publish_secret' => '', // Sealed.
@@ -48,6 +49,9 @@ final class Encore_Website_Settings {
 	public static function get( string $key, $default = '' ) {
 		if ( in_array( $key, [ 'token', 'publish_secret' ], true ) ) {
 			return $default;
+		}
+		if ( 'api_base' === $key && '' !== encore_website_constant( 'API_BASE' ) ) {
+			return encore_website_constant( 'API_BASE' );
 		}
 		if ( 'base_id' === $key && self::base_from_constant() ) {
 			return encore_website_constant( 'AIRTABLE_BASE' );
@@ -122,6 +126,9 @@ final class Encore_Website_Settings {
 			: trim( (string) ( $input['base_id'] ?? '' ) );
 		$after['base_id'] = self::valid_base_id( $base ) ? $base : '';
 
+		$api_base          = esc_url_raw( trim( (string) ( $input['api_base'] ?? '' ) ), [ 'https', 'http' ] );
+		$after['api_base'] = $api_base ? trailingslashit( $api_base ) : '';
+
 		$token = trim( (string) ( $input['token'] ?? '' ) );
 		if ( ! empty( $input['clear_token'] ) ) {
 			$after['token'] = '';
@@ -146,7 +153,7 @@ final class Encore_Website_Settings {
 		}
 
 		return [
-			'changed_connection' => $before['base_id'] !== $after['base_id'] || $before['token'] !== $after['token'] || $before['product'] !== $after['product'],
+			'changed_connection' => $before['api_base'] !== $after['api_base'] || $before['base_id'] !== $after['base_id'] || $before['token'] !== $after['token'] || $before['product'] !== $after['product'],
 		];
 	}
 }

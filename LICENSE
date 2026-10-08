@@ -1,4 +1,4 @@
-Drift Website
+Drift: Surface
 Copyright (c) 2026 Drift Creative Systems
 
 This package uses a split licence. Different parts are covered by different
@@ -24,8 +24,6 @@ terms, as set out below.
 
    - CSS, JavaScript, images, icons and other media
    - documentation (including the files in docs/ and this package's README)
-   - the Airtable base template, its specification, and the setup, migrate
-     and automation scripts in docs/
 
    You may not copy, modify, adapt, distribute, sublicense, sell or publish
    these files, in whole or in part, or use them to build a competing product
@@ -46,8 +44,8 @@ terms, as set out below.
 4. Names and branding
 
    "Drift", "Drift: Surface", "Drift: Surface Hub", "Drift App Suite",
-   "Drift Website", "Drift Creative Systems", "Surface" and "Encore" are names
-   used by Drift Creative Systems to identify its products.
+   "Drift Creative Systems" and "Surface" are names used by Drift Creative
+   Systems to identify its products.
    Neither the GPL nor any other part of this file grants any right to use
    them. A modified version of this package must not be distributed under
    these names, or in a way that suggests it comes from or is endorsed by

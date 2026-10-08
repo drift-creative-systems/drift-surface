@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [3.0.1] - 2026-10-08
+
+### Changed
+- LICENSE: titled **Drift: Surface**, with the reserved names updated to the current product names. Dropped the clause for docs/ files this package no longer ships.
+
 ## [3.0.0] - 2026-10-08
 
 First release of **Drift: Surface**, the site engine for Surface band and artist websites.

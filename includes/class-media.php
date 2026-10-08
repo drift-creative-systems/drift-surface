@@ -71,7 +71,7 @@ final class Drift_Surface_Media {
 		}
 
 		$type = strtolower( (string) ( $attachment['type'] ?? '' ) );
-		if ( $type && ! in_array( $type, [ 'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/svg+xml', 'application/pdf' ], true ) ) {
+		if ( $type && ! in_array( $type, [ 'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/svg+xml', 'application/pdf', 'video/mp4', 'video/webm' ], true ) ) {
 			Drift_Surface_Log::warning( sprintf( 'Skipped attachment "%s": file type %s is not allowed.', (string) ( $attachment['filename'] ?? $hub_id ), $type ) );
 			return 0;
 		}
@@ -84,7 +84,8 @@ final class Drift_Surface_Media {
 
 		self::$imported++;
 
-		$tmp = download_url( $source_url, 30 );
+		// Videos (hero backgrounds) are far bigger than images: give them longer to download.
+		$tmp = download_url( $source_url, 0 === strpos( $type, 'video/' ) ? 300 : 30 );
 		if ( is_wp_error( $tmp ) ) {
 			Drift_Surface_Log::error( 'Image download failed — ' . $tmp->get_error_message() );
 			return 0;

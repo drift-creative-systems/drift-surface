@@ -59,9 +59,11 @@ return [
 			'Logo'             => [ 'to' => 'logo', 'type' => 'image' ],
 			'Logo (Light)'     => [ 'to' => 'logo_light', 'type' => 'image' ],
 			'Hero Image'       => [ 'to' => 'hero_image', 'type' => 'image' ],
+			'Hero Video'       => [ 'to' => 'hero_video_file', 'type' => 'image' ], // MP4/WebM upload; stored as an attachment ID. Wins over Hero Video URL.
 			'Hero Video URL'   => [ 'to' => 'hero_video', 'type' => 'url' ],
 			'Primary Colour'   => [ 'to' => 'colour_primary', 'type' => 'text' ],
 			'Secondary Colour' => [ 'to' => 'colour_secondary', 'type' => 'text' ],
+			'General Email'    => [ 'to' => 'general_email', 'type' => 'email' ],
 			'Booking Email'    => [ 'to' => 'booking_email', 'type' => 'email' ],
 			'Management Email' => [ 'to' => 'management_email', 'type' => 'email' ],
 			'Press Email'      => [ 'to' => 'press_email', 'type' => 'email' ],

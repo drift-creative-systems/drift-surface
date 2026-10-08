@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [3.1.0] - 2026-10-08
+
+Needs Drift: Surface Hub 1.6.0 or later: the map now asks for the hub's new **Hero Video** and **General Email** fields.
+
+### Added
+- Map: **Hero Video** → `hero_video_file` (attachment ID) and **General Email** → `general_email` in Site Settings.
+- Media import accepts MP4 and WebM files, with a 300-second download timeout for videos (30 seconds for everything else).
+
 ## [3.0.1] - 2026-10-08
 
 ### Changed

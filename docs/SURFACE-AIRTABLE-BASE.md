@@ -1,8 +1,8 @@
-# Encore — Airtable template base
+# Surface — Airtable template base
 
 **Quickest route:** `docs/airtable-setup/` builds all of this through the API in about a minute. This page is the reference for what it builds.
 
-The base every Encore client gets: build it once as the golden template, then duplicate it into each client's own free workspace. Table and field names must match `maps/encore.php` **exactly**, including capitals and spaces. Encore Website → Connection → **Check connection** lists anything that's missing.
+The base every Surface client gets: build it once as the golden template, then duplicate it into each client's own free workspace. Table and field names must match `maps/surface.php` **exactly**, including capitals and spaces. Drift: Surface → Connection → **Check connection** lists anything that's missing.
 
 Free plan limits apply per base or workspace: 1,000 records, 1 GB attachments, 100 automation runs and 1,000 API calls a month. A band site uses roughly 150–400 records. Each publish costs 1 automation run plus about 11 API calls, so a client can publish around 60 times a month with room to spare.
 
@@ -184,8 +184,8 @@ Add one automation, **Publish website**:
 - **Action:** Run a script, using `docs/airtable-publish-automation.js`.
 - **Input variables:**
   - `recordId`: Airtable record ID from the trigger.
-  - `webhookUrl`: from Encore Website → Connection.
-  - `secret`: from Encore Website → Connection.
+  - `webhookUrl`: from Drift: Surface → Connection.
+  - `secret`: from Drift: Surface → Connection.
 
 Before relying on this for Free-plan clients, check that **Run a script** is available as an automation action on the Free plan. If it isn't, the fallback is the site's daily safety check plus the admin-bar **Sync from Airtable** button. A Make.com route is not a good fallback, because Make's Airtable watcher polls and spends the API allowance.
 
@@ -209,4 +209,4 @@ Create the token at airtable.com/create/tokens, scoped to **this base only**, wi
 - `data.records:write` for the website's forms.
 - `schema.bases:read` for Check connection.
 
-Paste it into Encore Website → Connection, where it's stored encrypted.
+Paste it into Drift: Surface → Connection, where it's stored encrypted.

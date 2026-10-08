@@ -1,74 +1,83 @@
 <?php
 /**
- * class-migrate.php — one-off move of 1.x (Drift Website) data to 2.0 names.
+ * class-migrate.php — one-off move of 2.x (Encore Website) data to 3.0 names.
  *
  * Runs once per site, early on plugins_loaded (auto-updates never fire the
  * activation hook) and again on activation. Renames rows in place, so values
  * and autoload flags are kept and synced posts stay owned by the sync:
  *
- *   options    drift_website_* → encore_website_*, drift_site_settings → encore_site_settings
- *   post meta  _drift_airtable_id, _drift_airtable_hash, _drift_entity, _drift_links_*,
- *              _drift_airtable_attachment_id, _drift_placeholder → _encore_*
- *   user meta  drift_website_agency_user → encore_website_agency_user
- *   secrets    re-sealed under the 2.0 key (Encore_Website_Crypto::reseal())
+ *   options    encore_website_* → drift_surface_*
+ *   settings   product "encore" → "surface" (the map was renamed)
+ *   post meta  _encore_airtable_id, _encore_airtable_hash, _encore_entity, _encore_links_*,
+ *              _encore_airtable_attachment_id, _encore_placeholder → _drift_surface_*
+ *   user meta  encore_website_agency_user → drift_surface_agency_user
+ *   secrets    re-sealed under the 3.0 key (Drift_Surface_Crypto::reseal())
  *   cron       old hooks unscheduled; the daily check is rescheduled
- *   transients 1.x caches and locks deleted (they rebuild themselves)
+ *   transients 2.x caches and locks deleted (they rebuild themselves)
+ *
+ * Map-owned data (encore_* post types and taxonomies, encore_site_settings,
+ * field meta) is the Encore theme's contract and isn't touched.
  *
  * A new name that already holds data is never overwritten.
  *
- * @package Encore_Website
+ * @package Drift_Surface
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-final class Encore_Website_Migrate {
+final class Drift_Surface_Migrate {
 
 	/** Set once the move is done (or there was nothing to move). Autoloaded, so checking it is free. */
-	const DONE_OPTION = 'encore_website_migrated';
-	const LOCK_OPTION = 'encore_website_migrating';
+	const DONE_OPTION = 'drift_surface_migrated';
+	const LOCK_OPTION = 'drift_surface_migrating';
 
 	const OPTIONS = [
-		'drift_website_settings'     => 'encore_website_settings',
-		'drift_website_log'          => 'encore_website_log',
-		'drift_website_api_usage'    => 'encore_website_api_usage',
-		'drift_website_sync_status'  => 'encore_website_sync_status',
-		'drift_website_last_publish' => 'encore_website_last_publish',
-		'drift_website_media_map'    => 'encore_website_media_map',
-		'drift_website_white_label'  => 'encore_website_white_label',
-		'drift_website_hidden_menus' => 'encore_website_hidden_menus',
-		'drift_site_settings'        => 'encore_site_settings',
+		'encore_website_settings'     => 'drift_surface_settings',
+		'encore_website_log'          => 'drift_surface_log',
+		'encore_website_api_usage'    => 'drift_surface_api_usage',
+		'encore_website_sync_status'  => 'drift_surface_sync_status',
+		'encore_website_last_publish' => 'drift_surface_last_publish',
+		'encore_website_media_map'    => 'drift_surface_media_map',
+		'encore_website_white_label'  => 'drift_surface_white_label',
+		'encore_website_hidden_menus' => 'drift_surface_hidden_menus',
 	];
 
 	const POST_META = [
-		'_drift_airtable_id'            => '_encore_airtable_id',
-		'_drift_airtable_hash'          => '_encore_airtable_hash',
-		'_drift_entity'                 => '_encore_entity',
-		'_drift_airtable_attachment_id' => '_encore_airtable_attachment_id',
-		'_drift_placeholder'            => '_encore_placeholder',
+		'_encore_airtable_id'            => '_drift_surface_airtable_id',
+		'_encore_airtable_hash'          => '_drift_surface_airtable_hash',
+		'_encore_entity'                 => '_drift_surface_entity',
+		'_encore_airtable_attachment_id' => '_drift_surface_airtable_attachment_id',
+		'_encore_placeholder'            => '_drift_surface_placeholder',
 	];
 
 	const POST_META_PREFIXES = [
-		'_drift_links_' => '_encore_links_',
+		'_encore_links_' => '_drift_surface_links_',
 	];
 
 	const USER_META = [
-		'drift_website_agency_user' => 'encore_website_agency_user',
+		'encore_website_agency_user' => 'drift_surface_agency_user',
 	];
 
 	const TRANSIENTS = [
-		'drift_website_sync_lock',
-		'drift_website_sync_records',
-		'drift_website_airtable_pause',
-		'drift_website_schema_check',
-		'drift_website_link_throttle',
+		'encore_website_sync_lock',
+		'encore_website_sync_records',
+		'encore_website_airtable_pause',
+		'encore_website_schema_check',
+		'encore_website_link_throttle',
 	];
 
 	const CRON_HOOKS = [
-		'drift_website_daily_check',
-		'drift_website_run_sync',
-		'drift_website_continue_sync',
+		'encore_website_daily_check',
+		'encore_website_run_sync',
+		'encore_website_continue_sync',
+	];
+
+	/** 2.x bookkeeping, deleted once the move is done. */
+	const OBSOLETE_OPTIONS = [
+		'encore_website_migrated',
+		'encore_website_migrating',
 	];
 
 	public static function maybe_run(): void {
@@ -87,20 +96,20 @@ final class Encore_Website_Migrate {
 
 		try {
 			$moved = self::run();
-			update_option( self::DONE_OPTION, ENCORE_WEBSITE_VERSION, true );
+			update_option( self::DONE_OPTION, DRIFT_SURFACE_VERSION, true );
 			if ( $moved ) {
-				Encore_Website_Log::info( 'Moved Drift Website 1.x settings and sync data to Encore Website names.', 'migrate' );
+				Drift_Surface_Log::info( 'Moved Encore Website 2.x settings and sync data to Drift: Surface names.', 'migrate' );
 			}
 		} catch ( Throwable $e ) {
 			// Leave DONE_OPTION unset so the next request retries.
-			error_log( 'Encore Website migration failed: ' . $e->getMessage() ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( 'Drift: Surface migration failed: ' . $e->getMessage() ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		} finally {
 			delete_option( self::LOCK_OPTION );
 		}
 	}
 
 	/**
-	 * @return bool Whether any 1.x data was found and moved.
+	 * @return bool Whether any 2.x data was found and moved.
 	 */
 	private static function run(): bool {
 		global $wpdb;
@@ -134,18 +143,22 @@ final class Encore_Website_Migrate {
 			wp_cache_flush(); // Meta caches hold the old keys.
 		}
 
-		self::reseal_secrets();
+		self::update_settings();
 
 		foreach ( self::TRANSIENTS as $transient ) {
 			delete_transient( $transient );
+		}
+
+		foreach ( self::OBSOLETE_OPTIONS as $option ) {
+			delete_option( $option );
 		}
 
 		$had_cron = false;
 		foreach ( self::CRON_HOOKS as $hook ) {
 			$had_cron = wp_unschedule_hook( $hook ) > 0 || $had_cron;
 		}
-		if ( $had_cron && '1' === (string) Encore_Website_Settings::get( 'daily_check', '1' ) ) {
-			Encore_Website_Publish::schedule_daily_check();
+		if ( $had_cron && '1' === (string) Drift_Surface_Settings::get( 'daily_check', '1' ) ) {
+			Drift_Surface_Publish::schedule_daily_check();
 		}
 
 		return $moved || $had_cron;
@@ -173,19 +186,28 @@ final class Encore_Website_Migrate {
 		return $renamed;
 	}
 
-	/** Re-seals the token and publish secret under the 2.0 key. */
-	private static function reseal_secrets(): void {
-		$saved = get_option( Encore_Website_Settings::OPTION );
+	/**
+	 * Points the product at the renamed map and re-seals the token and publish
+	 * secret under the 3.0 key.
+	 */
+	private static function update_settings(): void {
+		$saved = get_option( Drift_Surface_Settings::OPTION );
 		if ( ! is_array( $saved ) ) {
 			return;
 		}
 
 		$changed = false;
+
+		if ( 'encore' === ( $saved['product'] ?? '' ) ) {
+			$saved['product'] = 'surface';
+			$changed          = true;
+		}
+
 		foreach ( [ 'token', 'publish_secret' ] as $key ) {
 			if ( empty( $saved[ $key ] ) ) {
 				continue;
 			}
-			$resealed = Encore_Website_Crypto::reseal( (string) $saved[ $key ] );
+			$resealed = Drift_Surface_Crypto::reseal( (string) $saved[ $key ] );
 			if ( $resealed !== $saved[ $key ] ) {
 				$saved[ $key ] = $resealed;
 				$changed       = true;
@@ -193,7 +215,7 @@ final class Encore_Website_Migrate {
 		}
 
 		if ( $changed ) {
-			update_option( Encore_Website_Settings::OPTION, $saved, false );
+			update_option( Drift_Surface_Settings::OPTION, $saved, false );
 		}
 	}
 }

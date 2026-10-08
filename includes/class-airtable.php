@@ -14,18 +14,18 @@
  * Token scopes needed: data.records:read (sync), data.records:write (forms,
  * optional), schema.bases:read (connection check, optional).
  *
- * @package Encore_Website
+ * @package Drift_Surface
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-final class Encore_Website_Airtable {
+final class Drift_Surface_Airtable {
 
 	const API          = 'https://api.airtable.com/v0/';
-	const USAGE_OPTION = 'encore_website_api_usage';
-	const PAUSE_KEY    = 'encore_website_airtable_pause';
+	const USAGE_OPTION = 'drift_surface_api_usage';
+	const PAUSE_KEY    = 'drift_surface_airtable_pause';
 	const PAGE_SIZE    = 100;
 	const MAX_PAGES    = 60;     // 6,000 rows — a runaway guard, not a real limit (Free plan caps a base at 1,000).
 	const THROTTLE_US  = 220000; // ~4.5 req/s, under Airtable's 5/s per base.
@@ -42,17 +42,17 @@ final class Encore_Website_Airtable {
 	 * @return array|WP_Error Decoded body, or WP_Error.
 	 */
 	public static function request( string $method, string $path, array $query = [], ?array $body = null ) {
-		$token = Encore_Website_Settings::token();
+		$token = Drift_Surface_Settings::token();
 		if ( '' === $token ) {
-			return new WP_Error( 'encore_not_connected', __( 'No Airtable token saved.', 'encore-website' ) );
+			return new WP_Error( 'drift_surface_not_connected', __( 'No Airtable token saved.', 'drift-surface' ) );
 		}
 
 		$paused_until = (int) get_transient( self::PAUSE_KEY );
 		if ( $paused_until > time() ) {
 			return new WP_Error(
-				'encore_rate_limited',
+				'drift_surface_rate_limited',
 				/* translators: %d: seconds. */
-				sprintf( __( 'Airtable asked us to slow down. Retrying is allowed in %d seconds.', 'encore-website' ), $paused_until - time() )
+				sprintf( __( 'Airtable asked us to slow down. Retrying is allowed in %d seconds.', 'drift-surface' ), $paused_until - time() )
 			);
 		}
 
@@ -86,7 +86,7 @@ final class Encore_Website_Airtable {
 
 		if ( 429 === $code ) {
 			set_transient( self::PAUSE_KEY, time() + 35, 35 );
-			return new WP_Error( 'encore_rate_limited', __( 'Airtable rate limit hit (HTTP 429). Paused for 35 seconds.', 'encore-website' ) );
+			return new WP_Error( 'drift_surface_rate_limited', __( 'Airtable rate limit hit (HTTP 429). Paused for 35 seconds.', 'drift-surface' ) );
 		}
 
 		if ( $code < 200 || $code >= 300 || ! is_array( $decoded ) ) {
@@ -95,9 +95,9 @@ final class Encore_Website_Airtable {
 				: '';
 			$type    = is_array( $decoded ) && is_array( $decoded['error'] ?? null ) ? (string) ( $decoded['error']['type'] ?? '' ) : '';
 			return new WP_Error(
-				'encore_airtable_http',
+				'drift_surface_airtable_http',
 				/* translators: 1: HTTP status, 2: Airtable's message. */
-				trim( sprintf( __( 'Airtable returned HTTP %1$d. %2$s', 'encore-website' ), $code, $message ) ),
+				trim( sprintf( __( 'Airtable returned HTTP %1$d. %2$s', 'drift-surface' ), $code, $message ) ),
 				[ 'status' => $code, 'type' => $type, 'message' => $message ]
 			);
 		}
@@ -115,9 +115,9 @@ final class Encore_Website_Airtable {
 	 * @return array|WP_Error
 	 */
 	public static function list_records( string $table, array $args = [] ) {
-		$base = (string) Encore_Website_Settings::get( 'base_id' );
-		if ( ! Encore_Website_Settings::valid_base_id( $base ) ) {
-			return new WP_Error( 'encore_not_connected', __( 'No valid Airtable base ID saved.', 'encore-website' ) );
+		$base = (string) Drift_Surface_Settings::get( 'base_id' );
+		if ( ! Drift_Surface_Settings::valid_base_id( $base ) ) {
+			return new WP_Error( 'drift_surface_not_connected', __( 'No valid Airtable base ID saved.', 'drift-surface' ) );
 		}
 
 		$query = [ 'pageSize' => self::PAGE_SIZE ];
@@ -211,9 +211,9 @@ final class Encore_Website_Airtable {
 	 * @return array|WP_Error The created record.
 	 */
 	public static function create_record( string $table, array $fields ) {
-		$base = (string) Encore_Website_Settings::get( 'base_id' );
-		if ( ! Encore_Website_Settings::valid_base_id( $base ) ) {
-			return new WP_Error( 'encore_not_connected', __( 'No valid Airtable base ID saved.', 'encore-website' ) );
+		$base = (string) Drift_Surface_Settings::get( 'base_id' );
+		if ( ! Drift_Surface_Settings::valid_base_id( $base ) ) {
+			return new WP_Error( 'drift_surface_not_connected', __( 'No valid Airtable base ID saved.', 'drift-surface' ) );
 		}
 
 		return self::request(
@@ -230,9 +230,9 @@ final class Encore_Website_Airtable {
 	 * @return array|WP_Error [ table name => [ field name => type ] ].
 	 */
 	public static function schema() {
-		$base = (string) Encore_Website_Settings::get( 'base_id' );
-		if ( ! Encore_Website_Settings::valid_base_id( $base ) ) {
-			return new WP_Error( 'encore_not_connected', __( 'No valid Airtable base ID saved.', 'encore-website' ) );
+		$base = (string) Drift_Surface_Settings::get( 'base_id' );
+		if ( ! Drift_Surface_Settings::valid_base_id( $base ) ) {
+			return new WP_Error( 'drift_surface_not_connected', __( 'No valid Airtable base ID saved.', 'drift-surface' ) );
 		}
 
 		$body = self::request( 'GET', 'meta/bases/' . rawurlencode( $base ) . '/tables' );
@@ -293,16 +293,16 @@ final class Encore_Website_Airtable {
 	/* ── Data source ─────────────────────────────────────────────────── */
 
 	/**
-	 * Where requests go: Airtable, or a Drift Hub (which speaks the same API).
-	 * Set on Encore Website → Connection → Data source, or with
-	 * ENCORE_WEBSITE_API_BASE in wp-config.php.
+	 * Where requests go: Airtable, or a Drift: Surface Hub (which speaks the same API).
+	 * Set on Drift: Surface → Connection → Data source, or with
+	 * DRIFT_SURFACE_API_BASE in wp-config.php.
 	 */
 	public static function api_base(): string {
-		$base = (string) Encore_Website_Settings::get( 'api_base', '' );
+		$base = (string) Drift_Surface_Settings::get( 'api_base', '' );
 		return ( '' !== $base && filter_var( $base, FILTER_VALIDATE_URL ) ) ? trailingslashit( $base ) : self::API;
 	}
 
-	/** True when syncing from a Drift Hub rather than Airtable. */
+	/** True when syncing from a Drift: Surface Hub rather than Airtable. */
 	public static function is_hub(): bool {
 		return self::API !== self::api_base();
 	}
@@ -330,11 +330,11 @@ final class Encore_Website_Airtable {
 	}
 
 	public static function budget(): int {
-		return (int) Encore_Website_Settings::get( 'api_budget', 1000 );
+		return (int) Drift_Surface_Settings::get( 'api_budget', 1000 );
 	}
 
 	public static function over_budget(): bool {
-		// A Drift Hub has no monthly call limit.
+		// A Drift: Surface Hub has no monthly call limit.
 		return ! self::is_hub() && self::usage()['calls'] >= self::budget();
 	}
 }

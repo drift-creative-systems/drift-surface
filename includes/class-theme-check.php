@@ -2,8 +2,8 @@
 /**
  * class-theme-check.php — pairs a product with its theme.
  *
- * A product map can name the theme it renders with (maps/encore.php →
- * 'theme'). When that theme (or a child of it) isn't the active theme, Encore Website
+ * A product map can name the theme it renders with (maps/surface.php →
+ * 'theme'). When that theme (or a child of it) isn't the active theme, Drift: Surface
  * shows a persistent notice with a one-click "Install & activate" (or
  * "Activate") button and blocks the Setup Wizard, because the wizard's pages
  * are made of that theme's modules. Maps without a 'theme' key are not
@@ -12,17 +12,17 @@
  * The matching check on the other side lives in the theme
  * (encore-theme/inc/requirements.php).
  *
- * @package Encore_Website
+ * @package Drift_Surface
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-final class Encore_Website_Theme_Check {
+final class Drift_Surface_Theme_Check {
 
-	const ACTION = 'encore_website_install_theme';
-	const ERROR  = 'encore_website_theme_error';
+	const ACTION = 'drift_surface_install_theme';
+	const ERROR  = 'drift_surface_theme_error';
 
 	public static function init(): void {
 		add_action( 'admin_notices', [ __CLASS__, 'notice' ] );
@@ -35,7 +35,7 @@ final class Encore_Website_Theme_Check {
 	 * @return array{slug: string, name: string, zip: string}|null
 	 */
 	public static function required(): ?array {
-		$theme = Encore_Website_Map::current()['theme'] ?? null;
+		$theme = Drift_Surface_Map::current()['theme'] ?? null;
 		return is_array( $theme ) && ! empty( $theme['slug'] ) ? $theme : null;
 	}
 
@@ -73,7 +73,7 @@ final class Encore_Website_Theme_Check {
 	public static function blocked_message(): string {
 		$theme = self::required();
 		/* translators: %s: theme name. */
-		return sprintf( __( 'The Setup Wizard builds pages from the %s theme\'s modules. Activate the theme, then come back here.', 'encore-website' ), $theme ? $theme['name'] : '' );
+		return sprintf( __( 'The Setup Wizard builds pages from the %s theme\'s modules. Activate the theme, then come back here.', 'drift-surface' ), $theme ? $theme['name'] : '' );
 	}
 
 	/* ── Notice ──────────────────────────────────────────────────────── */
@@ -93,10 +93,10 @@ final class Encore_Website_Theme_Check {
 		}
 
 		if ( $installed ) {
-			$label = __( 'Activate', 'encore-website' );
+			$label = __( 'Activate', 'drift-surface' );
 			$url   = wp_nonce_url( add_query_arg( [ 'action' => 'activate', 'stylesheet' => $installed->get_stylesheet() ], admin_url( 'themes.php' ) ), 'switch-theme_' . $installed->get_stylesheet() );
 		} elseif ( current_user_can( 'install_themes' ) && ! empty( $theme['zip'] ) ) {
-			$label = __( 'Install & activate', 'encore-website' );
+			$label = __( 'Install & activate', 'drift-surface' );
 			$url   = wp_nonce_url( admin_url( 'admin-post.php?action=' . self::ACTION ), self::ACTION );
 		} else {
 			$label = '';
@@ -106,8 +106,8 @@ final class Encore_Website_Theme_Check {
 		printf(
 			'<div class="notice notice-error"><p><strong>%1$s</strong> %2$s',
 			/* translators: %s: theme name. */
-			esc_html( sprintf( __( 'Encore Website needs the %s theme.', 'encore-website' ), $theme['name'] ?? '' ) ),
-			esc_html__( 'The plugin and theme work as a pair: until it\'s active, the Setup Wizard is switched off.', 'encore-website' )
+			esc_html( sprintf( __( 'Drift: Surface needs the %s theme.', 'drift-surface' ), $theme['name'] ?? '' ) ),
+			esc_html__( 'The plugin and theme work as a pair: until it\'s active, the Setup Wizard is switched off.', 'drift-surface' )
 		);
 		if ( $url ) {
 			printf( ' <a class="button button-primary" href="%1$s">%2$s</a>', esc_url( $url ), esc_html( $label . ' ' . ( $theme['name'] ?? '' ) ) );
@@ -121,12 +121,12 @@ final class Encore_Website_Theme_Check {
 		check_admin_referer( self::ACTION );
 
 		if ( ! current_user_can( 'install_themes' ) || ! current_user_can( 'switch_themes' ) ) {
-			wp_die( esc_html__( 'Insufficient permissions.', 'encore-website' ), '', [ 'response' => 403 ] );
+			wp_die( esc_html__( 'Insufficient permissions.', 'drift-surface' ), '', [ 'response' => 403 ] );
 		}
 
 		$theme = self::required();
 		if ( ! $theme || empty( $theme['zip'] ) ) {
-			self::fail( __( 'This product map doesn\'t say where to download its theme from.', 'encore-website' ) );
+			self::fail( __( 'This product map doesn\'t say where to download its theme from.', 'drift-surface' ) );
 		}
 
 		$installed = self::installed();
@@ -138,7 +138,7 @@ final class Encore_Website_Theme_Check {
 
 			// Needs direct filesystem access; FTP-credential hosts get a clear message instead of a form.
 			if ( 'direct' !== get_filesystem_method() ) {
-				self::fail( __( 'WordPress can\'t write to the themes folder directly here. Upload the theme zip under Appearance → Themes → Add New instead.', 'encore-website' ) );
+				self::fail( __( 'WordPress can\'t write to the themes folder directly here. Upload the theme zip under Appearance → Themes → Add New instead.', 'drift-surface' ) );
 			}
 
 			$upgrader = new Theme_Upgrader( new WP_Ajax_Upgrader_Skin() );
@@ -146,22 +146,22 @@ final class Encore_Website_Theme_Check {
 
 			if ( is_wp_error( $result ) || ! $result ) {
 				$message = is_wp_error( $result ) ? $result->get_error_message() : implode( ' ', (array) $upgrader->skin->get_error_messages() );
-				Encore_Website_Log::error( 'Theme install failed: ' . $message, 'setup' );
+				Drift_Surface_Log::error( 'Theme install failed: ' . $message, 'setup' );
 				/* translators: %s: error message. */
-				self::fail( sprintf( __( 'The theme couldn\'t be installed: %s', 'encore-website' ), $message ) );
+				self::fail( sprintf( __( 'The theme couldn\'t be installed: %s', 'drift-surface' ), $message ) );
 			}
 
 			wp_clean_themes_cache();
 			$installed = self::installed();
 			if ( ! $installed ) {
-				self::fail( __( 'The theme downloaded but WordPress can\'t find it. Check Appearance → Themes.', 'encore-website' ) );
+				self::fail( __( 'The theme downloaded but WordPress can\'t find it. Check Appearance → Themes.', 'drift-surface' ) );
 			}
 		}
 
 		switch_theme( $installed->get_stylesheet() );
-		Encore_Website_Log::info( 'Installed and activated the ' . $installed->get( 'Name' ) . ' theme.', 'setup' );
+		Drift_Surface_Log::info( 'Installed and activated the ' . $installed->get( 'Name' ) . ' theme.', 'setup' );
 
-		wp_safe_redirect( Encore_Website_Admin_Page::tab_url( 'wizard' ) );
+		wp_safe_redirect( Drift_Surface_Admin_Page::tab_url( 'wizard' ) );
 		exit;
 	}
 

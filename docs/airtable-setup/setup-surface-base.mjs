@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * Encore — Airtable base builder and migrator.
+ * Surface — Airtable base builder and migrator.
  *
- * BUILD a new base: creates every table and field the Encore map expects
- * (maps/encore.php, docs/ENCORE-AIRTABLE-BASE.md) in an EMPTY base you've
+ * BUILD a new base: creates every table and field the Surface map expects
+ * (maps/surface.php, docs/SURFACE-AIRTABLE-BASE.md) in an EMPTY base you've
  * already created, and optionally fills it with a demo band.
  *
- *   AIRTABLE_TOKEN=<token> node setup-encore-base.mjs --base appXXXXXXXXXXXXXX [--demo velvet|hollin] [--dry-run]
+ *   AIRTABLE_TOKEN=<token> node setup-surface-base.mjs --base appXXXXXXXXXXXXXX [--demo velvet|hollin] [--dry-run]
  *
  * MIGRATE existing bases to the latest template: adds missing tables, fields,
  * links, then stamps the template version. It never deletes, renames or
@@ -14,9 +14,9 @@
  * (formulas, select options, buttons, the Interface). It's a dry run unless
  * you add --apply.
  *
- *   AIRTABLE_TOKEN=<token> node setup-encore-base.mjs --migrate --all                 (every Encore base the token can see)
- *   AIRTABLE_TOKEN=<token> node setup-encore-base.mjs --migrate --bases appA,appB     (just these)
- *   AIRTABLE_TOKEN=<token> node setup-encore-base.mjs --migrate --all --apply         (make the changes)
+ *   AIRTABLE_TOKEN=<token> node setup-surface-base.mjs --migrate --all                 (every Surface base the token can see)
+ *   AIRTABLE_TOKEN=<token> node setup-surface-base.mjs --migrate --bases appA,appB     (just these)
+ *   AIRTABLE_TOKEN=<token> node setup-surface-base.mjs --migrate --all --apply         (make the changes)
  *
  * (--token also works, but the environment variable keeps the token out of
  * shell history.)
@@ -24,7 +24,7 @@
  * Tokens (airtable.com/create/tokens):
  * - Build: access to that ONE base; scopes schema.bases:read, schema.bases:write,
  *   data.records:read, data.records:write. Delete it afterwards.
- * - Migrate: a "Encore Website maintenance" token with access to every client workspace;
+ * - Migrate: a "Drift: Surface maintenance" token with access to every client workspace;
  *   scopes schema.bases:read and schema.bases:write only. Your account needs
  *   Creator (or Owner) access in each workspace to change its bases.
  * Never give a website a token with schema:write.
@@ -47,7 +47,7 @@ const API = process.env.AIRTABLE_API || 'https://api.airtable.com/v0';
 /*
  * Template version. Bump it whenever SCHEMA changes, and add a line below.
  * It's stamped at the end of the Site Settings table description, e.g.
- * "… [Encore template v2]", so you can see which version a base is on.
+ * "… [Surface template v2]", so you can see which version a base is on.
  *
  *   1  First release (unstamped bases count as 1).
  *   2  Site Settings: Live Embed, Merch Embed.
@@ -55,7 +55,7 @@ const API = process.env.AIRTABLE_API || 'https://api.airtable.com/v0';
 const TEMPLATE_VERSION = 2;
 const STAMP_TABLE = 'Site Settings';
 const AUTOMATION_ONLY = ['Publish', 'Last Published']; // Site Settings fields the band never edits, so never added to the Interface.
-const MARKER = /\s*\[Encore template v(\d+)\]\s*$/;
+const MARKER = /\s*\[(?:Surface|Encore) template v(\d+)\]\s*$/;
 
 /* ── Args ─────────────────────────────────────────────────────────────── */
 const args = Object.fromEntries(
@@ -74,8 +74,8 @@ const DRY = !!args['dry-run'] || (MIGRATE && !args.apply);
 const BASE_ID = /^app[A-Za-z0-9]{14}$/;
 
 const USAGE = `Usage:
-  Build:    AIRTABLE_TOKEN=<token> node setup-encore-base.mjs --base appXXXXXXXXXXXXXX [--demo velvet|hollin] [--dry-run]
-  Migrate:  AIRTABLE_TOKEN=<token> node setup-encore-base.mjs --migrate (--all | --bases appA,appB | --base appA) [--apply]`;
+  Build:    AIRTABLE_TOKEN=<token> node setup-surface-base.mjs --base appXXXXXXXXXXXXXX [--demo velvet|hollin] [--dry-run]
+  Migrate:  AIRTABLE_TOKEN=<token> node setup-surface-base.mjs --migrate (--all | --bases appA,appB | --base appA) [--apply]`;
 
 if (!TOKEN) {
 	console.error(USAGE);
@@ -122,7 +122,7 @@ const rating = (name) => ({ name, type: 'rating', options: { icon: 'star', max: 
 const select = (name, choices) => ({ name, type: 'singleSelect', options: { choices: choices.map((c) => ({ name: c })) } });
 const multi = (name, choices) => ({ name, type: 'multipleSelects', options: { choices: choices.map((c) => ({ name: c })) } });
 
-/* ── Schema (must match maps/encore.php) ──────────────────────────────── */
+/* ── Schema (must match maps/surface.php) ──────────────────────────────── */
 // First field = primary field. Links are added in a second pass (they need table IDs).
 // Changing this? Bump TEMPLATE_VERSION above.
 const SCHEMA = [
@@ -274,7 +274,7 @@ async function listBases() {
 	return out;
 }
 
-const isEncore = (tables) => ['Site Settings', 'Gigs', 'Releases'].every((name) => tables.some((t) => t.name === name));
+const isSurface = (tables) => ['Site Settings', 'Gigs', 'Releases'].every((name) => tables.some((t) => t.name === name));
 
 /** Template version stamped on a base (unstamped bases count as 1). */
 function versionOf(tables) {
@@ -408,14 +408,14 @@ function audit(tables) {
 	return jobs;
 }
 
-/** Writes "[Encore template vN]" onto the Site Settings table description. */
+/** Writes "[Surface template vN]" onto the Site Settings table description. */
 async function stamp(base, tables) {
 	const table = tables.find((t) => t.name === STAMP_TABLE);
 	if (!table) return;
 	const spec = SCHEMA.find((s) => s.name === STAMP_TABLE);
 	const current = (table.description || '').replace(MARKER, '').trim() || spec.description || '';
 	await api('PATCH', `meta/bases/${base}/tables/${table.id}`, {
-		description: `${current} [Encore template v${TEMPLATE_VERSION}]`.trim(),
+		description: `${current} [Surface template v${TEMPLATE_VERSION}]`.trim(),
 	});
 }
 
@@ -430,9 +430,9 @@ async function migrateBase(base, name, permission) {
 	console.log(`\n▸ ${name} (${base})`);
 	const tables = await getSchema(base);
 
-	if (!isEncore(tables)) {
-		console.log('  Not an Encore base — skipped.');
-		return { base, name, status: 'not Encore' };
+	if (!isSurface(tables)) {
+		console.log('  Not a Surface base — skipped.');
+		return { base, name, status: 'not Surface' };
 	}
 
 	const from = versionOf(tables);
@@ -470,7 +470,7 @@ async function migrateBase(base, name, permission) {
 }
 
 async function migrate() {
-	console.log(`Encore migrate → template v${TEMPLATE_VERSION}`);
+	console.log(`Surface migrate → template v${TEMPLATE_VERSION}`);
 	console.log(DRY ? 'DRY RUN — nothing will change. Add --apply to make these changes.' : 'APPLYING changes.');
 
 	let targets;
@@ -492,16 +492,16 @@ async function migrate() {
 		}
 	}
 
-	const encore = results.filter((r) => r.status !== 'not Encore');
+	const surface = results.filter((r) => r.status !== 'not Surface');
 	console.log(`\nSummary (${calls} API calls):`);
-	for (const r of encore) {
+	for (const r of surface) {
 		const detail = r.changes === undefined ? '' : ` — v${r.from}, ${r.changes} change(s), ${r.jobs} to do by hand`;
 		console.log(`  ${r.status.padEnd(9)} ${r.name} (${r.base})${detail}`);
 	}
-	if (!encore.length) console.log('  No Encore bases found.');
-	const skipped = results.length - encore.length;
-	if (skipped) console.log(`  (${skipped} non-Encore base(s) ignored)`);
-	if (DRY && encore.some((r) => r.changes)) console.log('\nRun again with --apply to make these changes.');
+	if (!surface.length) console.log('  No Surface bases found.');
+	const skipped = results.length - surface.length;
+	if (skipped) console.log(`  (${skipped} non-Surface base(s) ignored)`);
+	if (DRY && surface.some((r) => r.changes)) console.log('\nRun again with --apply to make these changes.');
 
 	return results.some((r) => r.status === 'error') ? 1 : 0;
 }
@@ -700,7 +700,7 @@ try {
 	if (MIGRATE) {
 		process.exitCode = await migrate();
 	} else {
-		console.log(`Encore base builder → ${BASE} (template v${TEMPLATE_VERSION})${DRY ? ' (dry run)' : ''}`);
+		console.log(`Surface base builder → ${BASE} (template v${TEMPLATE_VERSION})${DRY ? ' (dry run)' : ''}`);
 		console.log('\nReading the base…');
 		const result = await buildSchema(BASE, await getSchema(BASE));
 		await stamp(BASE, result.tables);

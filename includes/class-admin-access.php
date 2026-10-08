@@ -10,7 +10,7 @@
  *   - An "Agency user" checkbox on each user's profile (user meta
  *     self::META). Agency users see the full admin; everyone else — whatever
  *     their role, since some clients are Administrators — gets the trimmed
- *     menu chosen on Encore Website → White Label.
+ *     menu chosen on Drift: Surface → White Label.
  *   - Hidden menus are also blocked by URL (self::block_hidden_pages()), not
  *     just removed from the sidebar.
  *
@@ -22,17 +22,17 @@
  *   - The Dashboard and the user's own Profile are never hidden or blocked,
  *     so everyone can always reach the checkbox's page.
  *
- * @package Encore_Website
+ * @package Drift_Surface
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-class Encore_Website_Admin_Access {
+class Drift_Surface_Admin_Access {
 
-    const META   = 'encore_website_agency_user';
-    const OPTION = 'encore_website_hidden_menus';
+    const META   = 'drift_surface_agency_user';
+    const OPTION = 'drift_surface_hidden_menus';
 
     /** Never hidden or blocked — see the lockout notes above. */
     const PROTECTED_SLUGS = [ 'index.php', 'profile.php' ];
@@ -67,7 +67,7 @@ class Encore_Website_Admin_Access {
             'tools.php',
             'options-general.php',
             'edit.php?post_type=acf-field-group',
-            'encore-website',
+            'drift-surface',
         ];
     }
 
@@ -120,16 +120,16 @@ class Encore_Website_Admin_Access {
             return;
         }
         ?>
-        <h2><?php esc_html_e( 'Encore Website access', 'encore-website' ); ?></h2>
+        <h2><?php esc_html_e( 'Drift: Surface access', 'drift-surface' ); ?></h2>
         <table class="form-table" role="presentation">
             <tr>
-                <th scope="row"><?php esc_html_e( 'Agency user', 'encore-website' ); ?></th>
+                <th scope="row"><?php esc_html_e( 'Agency user', 'drift-surface' ); ?></th>
                 <td>
-                    <label for="encore-website-agency-user">
-                        <input type="checkbox" id="encore-website-agency-user" name="encore_website_agency_user" value="1" <?php checked( self::is_agency( $user->ID ) ); ?>>
-                        <?php esc_html_e( 'Sees the full admin menu and can change Encore Website → White Label.', 'encore-website' ); ?>
+                    <label for="drift-surface-agency-user">
+                        <input type="checkbox" id="drift-surface-agency-user" name="drift_surface_agency_user" value="1" <?php checked( self::is_agency( $user->ID ) ); ?>>
+                        <?php esc_html_e( 'Sees the full admin menu and can change Drift: Surface → White Label.', 'drift-surface' ); ?>
                     </label>
-                    <p class="description"><?php esc_html_e( 'Everyone else gets the trimmed menu set on Encore Website → White Label. Menu hiding only switches on once at least one agency user exists.', 'encore-website' ); ?></p>
+                    <p class="description"><?php esc_html_e( 'Everyone else gets the trimmed menu set on Drift: Surface → White Label. Menu hiding only switches on once at least one agency user exists.', 'drift-surface' ); ?></p>
                 </td>
             </tr>
         </table>
@@ -146,7 +146,7 @@ class Encore_Website_Admin_Access {
         }
 
         // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by core, see above.
-        if ( ! empty( $_POST['encore_website_agency_user'] ) ) {
+        if ( ! empty( $_POST['drift_surface_agency_user'] ) ) {
             update_user_meta( $user_id, self::META, '1' );
         } else {
             delete_user_meta( $user_id, self::META );
@@ -198,8 +198,8 @@ class Encore_Website_Admin_Access {
         foreach ( self::$blocked as $slug ) {
             if ( self::request_matches( $slug, (string) $pagenow, (string) $plugin_page ) ) {
                 wp_die(
-                    esc_html__( 'Sorry, you are not allowed to access this page.', 'encore-website' ),
-                    esc_html__( 'Not allowed', 'encore-website' ),
+                    esc_html__( 'Sorry, you are not allowed to access this page.', 'drift-surface' ),
+                    esc_html__( 'Not allowed', 'drift-surface' ),
                     [ 'response' => 403, 'back_link' => true ]
                 );
             }
@@ -236,7 +236,7 @@ class Encore_Website_Admin_Access {
     /* ── White Label tab card ────────────────────────────────────────── */
 
     /**
-     * The "Admin menus" card on Encore Website → White Label. Rendered inside that
+     * The "Admin menus" card on Drift: Surface → White Label. Rendered inside that
      * tab's form; saved by save_settings().
      */
     public static function render_settings_card(): void {
@@ -260,7 +260,7 @@ class Encore_Website_Admin_Access {
         foreach ( $hidden as $slug ) {
             if ( ! isset( $items[ $slug ] ) ) {
                 /* translators: %s: admin menu slug. */
-                $items[ $slug ] = sprintf( __( '%s (not currently in the menu)', 'encore-website' ), $slug );
+                $items[ $slug ] = sprintf( __( '%s (not currently in the menu)', 'drift-surface' ), $slug );
             }
         }
 
@@ -270,18 +270,18 @@ class Encore_Website_Admin_Access {
             'fields'     => [ 'ID', 'display_name', 'user_email' ],
         ] );
         ?>
-        <section class="ew-card">
-            <h3><?php esc_html_e( 'Admin menus', 'encore-website' ); ?></h3>
-            <p class="description"><?php esc_html_e( 'Ticked menus are hidden from everyone who isn\'t an agency user, whatever their role, and their pages are blocked if someone types the address. The Dashboard and each user\'s own Profile are always available.', 'encore-website' ); ?></p>
+        <section class="ds-card">
+            <h3><?php esc_html_e( 'Admin menus', 'drift-surface' ); ?></h3>
+            <p class="description"><?php esc_html_e( 'Ticked menus are hidden from everyone who isn\'t an agency user, whatever their role, and their pages are blocked if someone types the address. The Dashboard and each user\'s own Profile are always available.', 'drift-surface' ); ?></p>
 
             <?php if ( ! $agency ) : ?>
                 <div class="notice notice-warning inline"><p>
-                    <?php esc_html_e( 'Menu hiding is off: no agency users yet.', 'encore-website' ); ?>
-                    <a href="<?php echo esc_url( admin_url( 'profile.php#encore-website-agency-user' ) ); ?>"><?php esc_html_e( 'Tick "Agency user" on your profile', 'encore-website' ); ?></a>
+                    <?php esc_html_e( 'Menu hiding is off: no agency users yet.', 'drift-surface' ); ?>
+                    <a href="<?php echo esc_url( admin_url( 'profile.php#drift-surface-agency-user' ) ); ?>"><?php esc_html_e( 'Tick "Agency user" on your profile', 'drift-surface' ); ?></a>
                 </p></div>
             <?php else : ?>
                 <p>
-                    <strong><?php esc_html_e( 'Agency users:', 'encore-website' ); ?></strong>
+                    <strong><?php esc_html_e( 'Agency users:', 'drift-surface' ); ?></strong>
                     <?php
                     echo wp_kses(
                         implode( ', ', array_map( static function ( $u ) {
@@ -294,9 +294,9 @@ class Encore_Website_Admin_Access {
             <?php endif; ?>
 
             <input type="hidden" name="admin_access[submitted]" value="1">
-            <div class="ew-menu-list">
+            <div class="ds-menu-list">
                 <?php foreach ( $items as $slug => $label ) : ?>
-                    <label class="ew-menu-list__item">
+                    <label class="ds-menu-list__item">
                         <input type="checkbox" name="admin_access[hidden_menus][]" value="<?php echo esc_attr( $slug ); ?>" <?php checked( in_array( $slug, $hidden, true ) ); ?>>
                         <span><?php echo esc_html( $label ); ?><small><?php echo esc_html( $slug ); ?></small></span>
                     </label>

@@ -1,5 +1,5 @@
 /**
- * Encore Website — Airtable "Publish" automation script.
+ * Drift: Surface — Airtable "Publish" automation script.
  *
  * Automation setup (in the client's base):
  *   Trigger:  When a record matches conditions
@@ -7,8 +7,8 @@
  *   Action:   Run a script (this file)
  *             Input variables:
  *               recordId   → Airtable record ID (from the trigger)
- *               webhookUrl → https://CLIENT-SITE/wp-json/encore/v1/publish   (Encore Website → Connection)
- *               secret     → the site's publish secret                       (Encore Website → Connection)
+ *               webhookUrl → https://CLIENT-SITE/wp-json/drift-surface/v1/publish   (Drift: Surface → Connection)
+ *               secret     → the site's publish secret                       (Drift: Surface → Connection)
  *
  * What it does:
  *   1. Stamps "Last Published" with the current time and unticks "Publish"
@@ -37,7 +37,7 @@ const response = await fetch(webhookUrl, {
     method: 'POST',
     headers: {
         'Content-Type': 'application/json',
-        'X-Encore-Secret': secret,
+        'X-Drift-Surface-Secret': secret,
     },
     body: JSON.stringify({ last_published: stamp, by: 'airtable-automation' }),
 });

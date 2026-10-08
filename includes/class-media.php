@@ -12,17 +12,17 @@
  * a 200-photo gallery can't time out. Anything over the cap is reported back
  * as "deferred" and the sync engine schedules a continuation run.
  *
- * @package Encore_Website
+ * @package Drift_Surface
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-final class Encore_Website_Media {
+final class Drift_Surface_Media {
 
-	const MAP_OPTION = 'encore_website_media_map';
-	const META_ID    = '_encore_airtable_attachment_id';
+	const MAP_OPTION = 'drift_surface_media_map';
+	const META_ID    = '_drift_surface_airtable_attachment_id';
 
 	/** @var int Imports made in this request. */
 	private static $imported = 0;
@@ -65,7 +65,7 @@ final class Encore_Website_Media {
 			return (int) $map[ $airtable_id ];
 		}
 
-		$cap = max( 1, (int) Encore_Website_Settings::get( 'image_batch', 20 ) );
+		$cap = max( 1, (int) Drift_Surface_Settings::get( 'image_batch', 20 ) );
 		if ( self::$imported >= $cap ) {
 			self::$deferred = true;
 			return 0;
@@ -73,7 +73,7 @@ final class Encore_Website_Media {
 
 		$type = strtolower( (string) ( $attachment['type'] ?? '' ) );
 		if ( $type && ! in_array( $type, [ 'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/svg+xml', 'application/pdf' ], true ) ) {
-			Encore_Website_Log::warning( sprintf( 'Skipped attachment "%s": file type %s is not allowed.', (string) ( $attachment['filename'] ?? $airtable_id ), $type ) );
+			Drift_Surface_Log::warning( sprintf( 'Skipped attachment "%s": file type %s is not allowed.', (string) ( $attachment['filename'] ?? $airtable_id ), $type ) );
 			return 0;
 		}
 
@@ -87,7 +87,7 @@ final class Encore_Website_Media {
 
 		$tmp = download_url( $source_url, 30 );
 		if ( is_wp_error( $tmp ) ) {
-			Encore_Website_Log::error( 'Image download failed — ' . $tmp->get_error_message() );
+			Drift_Surface_Log::error( 'Image download failed — ' . $tmp->get_error_message() );
 			return 0;
 		}
 
@@ -103,7 +103,7 @@ final class Encore_Website_Media {
 			if ( file_exists( $tmp ) ) {
 				wp_delete_file( $tmp );
 			}
-			Encore_Website_Log::error( 'Media import failed — ' . $attachment_id->get_error_message() );
+			Drift_Surface_Log::error( 'Media import failed — ' . $attachment_id->get_error_message() );
 			return 0;
 		}
 

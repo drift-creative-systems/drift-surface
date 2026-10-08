@@ -2,6 +2,27 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [3.0.0] - 2026-10-08
+
+Renamed from **Encore Website** to **Drift: Surface**, to sit alongside the Drift: Surface Hub. There are no client installs of 2.x, so this is a new plugin folder rather than an in-place update. See "Upgrading from Encore Website 2.x" in README.md.
+
+### Changed
+- Plugin name **Drift: Surface**. Slug, folder, main file (`drift-surface.php`), text domain, release zip (`drift-surface.zip`) and GitHub repo (`drift-creative-systems/drift-surface`) are now `drift-surface`. Added an `Update URI` header.
+- Code prefixes: `Drift_Surface_*` classes, `DRIFT_SURFACE_*` constants, `drift_surface_*` functions, hooks, options and cron events, `_drift_surface_*` post meta, `ds-` admin CSS classes, `DriftSurface` JS object.
+- Product map renamed `maps/encore.php` → `maps/surface.php`, slug `surface`, label "Surface". Its post types, taxonomies and `encore_site_settings` option keep their names, because the Encore theme reads them.
+- Publish webhook is `POST /wp-json/drift-surface/v1/publish` (and `/status`) with an `X-Drift-Surface-Secret` header. The publish link is `?drift_surface_publish=`, and the form action is `drift_surface_form`. drift-hub 1.4.0 posts to the new endpoint.
+- Admin screen, login screen and White Label defaults restyled to match the Drift: Surface Hub. They use the Drift Brand System: self-hosted Poppins and Inter (no Google requests), a black header with the Drift mark, black pill buttons and the `#FF4FA3` accent. The header shows the data source (hub or Airtable). Default login button is now black (hover `#2A2B2E`). Sites that saved their own colours keep them.
+- The publish result page's button is a black pill. White text on a client's accent colour could fail contrast.
+- Docs: `docs/ENCORE-AIRTABLE-BASE.md` → `docs/SURFACE-AIRTABLE-BASE.md`, `setup-encore-base.mjs` → `setup-surface-base.mjs`. The base migrator stamps `[Surface template vN]` and still recognises `[Encore template vN]`.
+
+### Added
+- `Drift_Surface_Migrate` moves 2.x data once on activation: options, post meta, user meta and cron hooks are renamed, the token and publish secret are re-encrypted, and the product changes from `encore` to `surface`. Synced posts keep their ownership, so the next sync updates them rather than duplicating them.
+- `includes/compat.php` keeps the 2.x names working until 4.0: `encore_website_*` functions and hooks, `Encore_Website_*` classes and `ENCORE_WEBSITE_*` constants. The current Encore theme runs unchanged.
+
+### Removed
+- 1.x (Drift Website) compatibility: the `drift-website.php` loader, `drift_*` functions, `Drift_Website_*` aliases, `drift_website_*` hooks, `DRIFT_WEBSITE_*` constants, the `drift/v1` namespace, the `X-Drift-Secret` header, `?drift_publish=` links and the `drift_form` action.
+- 2.x wire names: `encore/v1`, `X-Encore-Secret`, `?encore_publish=` and `encore_form`.
+
 ## [2.1.0] - 2026-10-08
 
 ### Added

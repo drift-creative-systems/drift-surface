@@ -1,19 +1,19 @@
 <?php
 /**
- * class-white-label.php — Encore Website admin branding and login screen.
+ * class-white-label.php — Drift: Surface admin branding and login screen.
  *
  * Replaces the parts of White
- * Label CMS we actually use, as a "White Label" tab in the Encore Website screen (added via the
- * `encore_website_admin_tabs` filter, same as the theme's Site Settings tab):
+ * Label CMS we actually use, as a "White Label" tab in the Drift: Surface screen (added via the
+ * `drift_surface_admin_tabs` filter, same as the theme's Site Settings tab):
  *
  *   Branding — hide WordPress branding (admin bar logo/links, footer credit,
  *              version), a custom admin bar logo, custom admin footer text.
  *   Login    — logo (size + link to the site), page background colour/image,
- *              form/label/button/link colours, on top of the default Encore Website
+ *              form/label/button/link colours, on top of the default Drift: Surface
  *              design in assets/login.css (black stage, pink accent, one
  *              white card holding the logo, form and links).
  *
- * Admin menu hiding is Encore_Website_Admin_Access (class-admin-access.php).
+ * Admin menu hiding is Drift_Surface_Admin_Access (class-admin-access.php).
  *
  * Settings live in one option (self::OPTION). Anything left blank falls back
  * to self::defaults(), so a fresh site is branded without anyone opening the
@@ -24,20 +24,20 @@
  * once would fight over the same login/admin bar output. The tab shows a
  * warning while it's active.
  *
- * @package Encore_Website
+ * @package Drift_Surface
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-class Encore_Website_White_Label {
+class Drift_Surface_White_Label {
 
-    const OPTION = 'encore_website_white_label';
+    const OPTION = 'drift_surface_white_label';
 
     public static function init(): void {
-        add_filter( 'encore_website_admin_tabs', [ __CLASS__, 'register_tab' ] );
-        add_action( 'admin_post_encore_website_save_white_label', [ __CLASS__, 'handle_save' ] );
+        add_filter( 'drift_surface_admin_tabs', [ __CLASS__, 'register_tab' ] );
+        add_action( 'admin_post_drift_surface_save_white_label', [ __CLASS__, 'handle_save' ] );
 
         // Branding.
         // Logo added early so it sits at the far left; the WordPress logo
@@ -53,49 +53,49 @@ class Encore_Website_White_Label {
         add_action( 'login_enqueue_scripts', [ __CLASS__, 'login_styles' ] );
         add_filter( 'login_headerurl', [ __CLASS__, 'login_logo_url' ] );
         add_filter( 'login_headertext', [ __CLASS__, 'login_logo_text' ] );
-        // No language switcher under the form — Encore Website sites are English-only.
+        // No language switcher under the form — Drift: Surface sites are English-only.
         add_filter( 'login_display_language_dropdown', '__return_false' );
     }
 
     /**
-     * Encore Website defaults — used for any field left blank. Palette:
-     * #ee4367 (pink), #e2ecf3 (mist), #000000. Logos come from
+     * Drift: Surface defaults — used for any field left blank. Drift Brand
+     * System, as on the Drift: Surface Hub: black, white, accent #FF4FA3. Logos come from
      * assets/branding/ if the files exist (see the README there).
      */
     public static function defaults(): array {
         return [
             // Branding.
             'hide_wp_branding'      => '1',
-            'admin_bar_logo'        => self::bundled_asset( 'ew-admin-bar-logo.png' ),
+            'admin_bar_logo'        => self::bundled_asset( 'ds-admin-bar-logo.png' ),
             'admin_bar_logo_url'    => '',
             'footer_text'           => 'Website by Drift Creative Systems',
             'footer_url'            => 'https://driftcreativesystems.co.uk/',
 
             // Login screen.
-            // ew-login-logo.png at 2× (640 × 230) stays sharp on retina.
-            'login_logo'            => self::bundled_asset( 'ew-login-logo.png' ),
+            // ds-login-logo.png at 2× (640 × 230) stays sharp on retina.
+            'login_logo'            => self::bundled_asset( 'ds-login-logo.png' ),
             'login_logo_width'      => 320,
             'login_logo_height'     => 115,
-            // Blank = the Encore Website black stage in assets/login.css. A colour
+            // Blank = the Drift: Surface black stage in assets/login.css. A colour
             // picked here replaces it with that flat colour.
             'login_bg_color'        => '',
             'login_bg_image'        => '',
             'login_form_bg_color'   => '#ffffff',
             'login_label_color'     => '#000000',
-            'login_button_color'    => '#ee4367',
+            'login_button_color'    => '#000000',
             'login_button_text'     => '#ffffff',
-            'login_button_hover'    => '#000000',
+            'login_button_hover'    => '#2a2b2e',
             'login_link_color'      => '#000000',
         ];
     }
 
     /**
      * Describes a default that isn't a plain value, for the "Blank uses the
-     * Encore Website default: …" hint — e.g. the login background, whose default is
+     * Drift: Surface default: …" hint — e.g. the login background, whose default is
      * the gradient in assets/login.css rather than a colour.
      */
     const DEFAULT_LABELS = [
-        'login_bg_color' => 'Encore Website black stage',
+        'login_bg_color' => 'Drift: Surface black stage',
     ];
 
     /**
@@ -103,8 +103,8 @@ class Encore_Website_White_Label {
      * missing default logo means "no logo", never a broken image.
      */
     private static function bundled_asset( string $file ): string {
-        return file_exists( ENCORE_WEBSITE_DIR . 'assets/branding/' . $file )
-            ? ENCORE_WEBSITE_URL . 'assets/branding/' . rawurlencode( $file )
+        return file_exists( DRIFT_SURFACE_DIR . 'assets/branding/' . $file )
+            ? DRIFT_SURFACE_URL . 'assets/branding/' . rawurlencode( $file )
             : '';
     }
 
@@ -133,28 +133,28 @@ class Encore_Website_White_Label {
 
     /**
      * The raw saved values, no defaults — what the form fields show, so a
-     * blank field visibly means "using the Encore Website default".
+     * blank field visibly means "using the Drift: Surface default".
      */
     private static function saved(): array {
         $saved = get_option( self::OPTION, [] );
         return is_array( $saved ) ? $saved : [];
     }
 
-    /* ── Encore Website tab ───────────────────────────────────────────────────── */
+    /* ── Drift: Surface tab ───────────────────────────────────────────────────── */
 
     /**
      * Adds the White Label tab. Only agency users see it once any exist
-     * (Encore_Website_Admin_Access) — clients shouldn't be able to rebrand
+     * (Drift_Surface_Admin_Access) — clients shouldn't be able to rebrand
      * the admin or change which menus they can see.
      */
     public static function register_tab( array $tabs ): array {
-        if ( ! Encore_Website_Admin_Access::can_manage() ) {
+        if ( ! Drift_Surface_Admin_Access::can_manage() ) {
             return $tabs;
         }
 
         $tabs['white-label'] = [
-            'label'       => __( 'White Label', 'encore-website' ),
-            'description' => __( 'Admin branding, the login screen, and which menus non-agency users can see. Blank fields use the Encore Website default.', 'encore-website' ),
+            'label'       => __( 'White Label', 'drift-surface' ),
+            'description' => __( 'Admin branding, the login screen, and which menus non-agency users can see. Blank fields use the Drift: Surface default.', 'drift-surface' ),
             'position'    => 55,
             'load'        => [ __CLASS__, 'load_tab' ],
             'render'      => [ __CLASS__, 'render_tab' ],
@@ -176,81 +176,81 @@ class Encore_Website_White_Label {
         $defaults = self::defaults();
         ?>
         <?php if ( isset( $_GET['white_label_saved'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
-            <div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'White label settings saved.', 'encore-website' ); ?></p></div>
+            <div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'White label settings saved.', 'drift-surface' ); ?></p></div>
         <?php endif; ?>
 
         <?php if ( defined( 'WLCMS_VERSION' ) ) : ?>
-            <div class="notice notice-warning"><p><?php esc_html_e( 'White Label CMS is still active. Deactivate it once you\'re happy with these settings — both plugins change the login screen and admin bar, and they\'ll conflict.', 'encore-website' ); ?></p></div>
+            <div class="notice notice-warning"><p><?php esc_html_e( 'White Label CMS is still active. Deactivate it once you\'re happy with these settings — both plugins change the login screen and admin bar, and they\'ll conflict.', 'drift-surface' ); ?></p></div>
         <?php endif; ?>
 
         <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-            <?php wp_nonce_field( 'encore_website_save_white_label', 'encore_website_white_label_nonce' ); ?>
-            <input type="hidden" name="action" value="encore_website_save_white_label">
+            <?php wp_nonce_field( 'drift_surface_save_white_label', 'drift_surface_white_label_nonce' ); ?>
+            <input type="hidden" name="action" value="drift_surface_save_white_label">
 
-            <section class="ew-card">
-                <h3><?php esc_html_e( 'Branding', 'encore-website' ); ?></h3>
+            <section class="ds-card">
+                <h3><?php esc_html_e( 'Branding', 'drift-surface' ); ?></h3>
                 <table class="form-table" role="presentation">
                     <tr>
-                        <th scope="row"><?php esc_html_e( 'WordPress branding', 'encore-website' ); ?></th>
+                        <th scope="row"><?php esc_html_e( 'WordPress branding', 'drift-surface' ); ?></th>
                         <td>
                             <input type="hidden" name="white_label[hide_wp_branding]" value="0">
                             <label>
                                 <input type="checkbox" name="white_label[hide_wp_branding]" value="1" <?php checked( self::settings()['hide_wp_branding'], '1' ); ?>>
-                                <?php esc_html_e( 'Hide the WordPress logo and links in the admin bar, the "Thank you for creating with WordPress" footer and the version number.', 'encore-website' ); ?>
+                                <?php esc_html_e( 'Hide the WordPress logo and links in the admin bar, the "Thank you for creating with WordPress" footer and the version number.', 'drift-surface' ); ?>
                             </label>
                         </td>
                     </tr>
                     <?php
-                    self::image_row( 'admin_bar_logo', __( 'Admin bar logo', 'encore-website' ), $saved, $defaults, __( 'Shown at the top-left of the admin bar, about 20px tall.', 'encore-website' ) );
-                    self::text_row( 'admin_bar_logo_url', __( 'Admin bar logo link', 'encore-website' ), $saved, $defaults, 'url', __( 'Leave blank to link to the dashboard.', 'encore-website' ) );
-                    self::text_row( 'footer_text', __( 'Admin footer text', 'encore-website' ), $saved, $defaults );
-                    self::text_row( 'footer_url', __( 'Admin footer link', 'encore-website' ), $saved, $defaults, 'url', __( 'Optional. Makes the footer text a link.', 'encore-website' ) );
+                    self::image_row( 'admin_bar_logo', __( 'Admin bar logo', 'drift-surface' ), $saved, $defaults, __( 'Shown at the top-left of the admin bar, about 20px tall.', 'drift-surface' ) );
+                    self::text_row( 'admin_bar_logo_url', __( 'Admin bar logo link', 'drift-surface' ), $saved, $defaults, 'url', __( 'Leave blank to link to the dashboard.', 'drift-surface' ) );
+                    self::text_row( 'footer_text', __( 'Admin footer text', 'drift-surface' ), $saved, $defaults );
+                    self::text_row( 'footer_url', __( 'Admin footer link', 'drift-surface' ), $saved, $defaults, 'url', __( 'Optional. Makes the footer text a link.', 'drift-surface' ) );
                     ?>
                 </table>
             </section>
 
-            <section class="ew-card">
-                <h3><?php esc_html_e( 'Login screen', 'encore-website' ); ?></h3>
+            <section class="ds-card">
+                <h3><?php esc_html_e( 'Login screen', 'drift-surface' ); ?></h3>
                 <table class="form-table" role="presentation">
                     <?php
-                    self::image_row( 'login_logo', __( 'Logo', 'encore-website' ), $saved, $defaults, __( 'Links to this site\'s home page.', 'encore-website' ) );
-                    self::number_row( 'login_logo_width', __( 'Logo width (px)', 'encore-website' ), $saved, $defaults );
-                    self::number_row( 'login_logo_height', __( 'Logo height (px)', 'encore-website' ), $saved, $defaults );
-                    self::colour_row( 'login_bg_color', __( 'Background colour', 'encore-website' ), $saved, $defaults );
-                    self::image_row( 'login_bg_image', __( 'Background image', 'encore-website' ), $saved, $defaults, __( 'Optional. Covers the whole page.', 'encore-website' ) );
-                    self::colour_row( 'login_form_bg_color', __( 'Login box background', 'encore-website' ), $saved, $defaults );
-                    self::colour_row( 'login_label_color', __( 'Form label colour', 'encore-website' ), $saved, $defaults );
-                    self::colour_row( 'login_button_color', __( 'Button colour', 'encore-website' ), $saved, $defaults );
-                    self::colour_row( 'login_button_text', __( 'Button text colour', 'encore-website' ), $saved, $defaults );
-                    self::colour_row( 'login_button_hover', __( 'Button hover colour', 'encore-website' ), $saved, $defaults );
-                    self::colour_row( 'login_link_color', __( 'Link colour', 'encore-website' ), $saved, $defaults );
+                    self::image_row( 'login_logo', __( 'Logo', 'drift-surface' ), $saved, $defaults, __( 'Links to this site\'s home page.', 'drift-surface' ) );
+                    self::number_row( 'login_logo_width', __( 'Logo width (px)', 'drift-surface' ), $saved, $defaults );
+                    self::number_row( 'login_logo_height', __( 'Logo height (px)', 'drift-surface' ), $saved, $defaults );
+                    self::colour_row( 'login_bg_color', __( 'Background colour', 'drift-surface' ), $saved, $defaults );
+                    self::image_row( 'login_bg_image', __( 'Background image', 'drift-surface' ), $saved, $defaults, __( 'Optional. Covers the whole page.', 'drift-surface' ) );
+                    self::colour_row( 'login_form_bg_color', __( 'Login box background', 'drift-surface' ), $saved, $defaults );
+                    self::colour_row( 'login_label_color', __( 'Form label colour', 'drift-surface' ), $saved, $defaults );
+                    self::colour_row( 'login_button_color', __( 'Button colour', 'drift-surface' ), $saved, $defaults );
+                    self::colour_row( 'login_button_text', __( 'Button text colour', 'drift-surface' ), $saved, $defaults );
+                    self::colour_row( 'login_button_hover', __( 'Button hover colour', 'drift-surface' ), $saved, $defaults );
+                    self::colour_row( 'login_link_color', __( 'Link colour', 'drift-surface' ), $saved, $defaults );
                     ?>
                 </table>
             </section>
 
-            <?php Encore_Website_Admin_Access::render_settings_card(); ?>
+            <?php Drift_Surface_Admin_Access::render_settings_card(); ?>
 
-            <p class="ew-save-row"><?php submit_button( __( 'Save white label settings', 'encore-website' ), 'primary', 'submit', false ); ?></p>
+            <p class="ds-save-row"><?php submit_button( __( 'Save white label settings', 'drift-surface' ), 'primary', 'submit', false ); ?></p>
         </form>
         <?php
     }
 
-    /** "Default: …" hint under a field, so blank visibly means Encore Website default. */
+    /** "Default: …" hint under a field, so blank visibly means Drift: Surface default. */
     private static function default_hint( string $key, array $defaults ): void {
         $default = self::DEFAULT_LABELS[ $key ] ?? $defaults[ $key ] ?? '';
         if ( '' === $default || null === $default ) {
-            printf( '<p class="description">%s</p>', esc_html__( 'No default — leave blank for none.', 'encore-website' ) );
+            printf( '<p class="description">%s</p>', esc_html__( 'No default — leave blank for none.', 'drift-surface' ) );
             return;
         }
         printf(
             '<p class="description">%s <code>%s</code></p>',
-            esc_html__( 'Blank uses the Encore Website default:', 'encore-website' ),
-            esc_html( is_string( $default ) && 0 === strpos( $default, ENCORE_WEBSITE_URL ) ? basename( rawurldecode( $default ) ) : (string) $default )
+            esc_html__( 'Blank uses the Drift: Surface default:', 'drift-surface' ),
+            esc_html( is_string( $default ) && 0 === strpos( $default, DRIFT_SURFACE_URL ) ? basename( rawurldecode( $default ) ) : (string) $default )
         );
     }
 
     private static function text_row( string $key, string $label, array $saved, array $defaults, string $type = 'text', string $help = '' ): void {
-        $id = 'ew-wl-' . $key;
+        $id = 'ds-wl-' . $key;
         ?>
         <tr>
             <th scope="row"><label for="<?php echo esc_attr( $id ); ?>"><?php echo esc_html( $label ); ?></label></th>
@@ -266,7 +266,7 @@ class Encore_Website_White_Label {
     }
 
     private static function number_row( string $key, string $label, array $saved, array $defaults ): void {
-        $id    = 'ew-wl-' . $key;
+        $id    = 'ds-wl-' . $key;
         $value = $saved[ $key ] ?? '';
         ?>
         <tr>
@@ -280,36 +280,36 @@ class Encore_Website_White_Label {
     }
 
     private static function colour_row( string $key, string $label, array $saved, array $defaults ): void {
-        $id = 'ew-wl-' . $key;
+        $id = 'ds-wl-' . $key;
         ?>
         <tr>
             <th scope="row"><label for="<?php echo esc_attr( $id ); ?>"><?php echo esc_html( $label ); ?></label></th>
             <td>
-                <input type="text" id="<?php echo esc_attr( $id ); ?>" class="ew-colour-field" data-default-color="<?php echo esc_attr( (string) ( $defaults[ $key ] ?? '' ) ); ?>" name="white_label[<?php echo esc_attr( $key ); ?>]" value="<?php echo esc_attr( (string) ( $saved[ $key ] ?? '' ) ); ?>">
+                <input type="text" id="<?php echo esc_attr( $id ); ?>" class="ds-colour-field" data-default-color="<?php echo esc_attr( (string) ( $defaults[ $key ] ?? '' ) ); ?>" name="white_label[<?php echo esc_attr( $key ); ?>]" value="<?php echo esc_attr( (string) ( $saved[ $key ] ?? '' ) ); ?>">
                 <?php self::default_hint( $key, $defaults ); ?>
             </td>
         </tr>
         <?php
     }
 
-    /** Media Library picker — reuses admin.js's generic .ew-media-field. */
+    /** Media Library picker — reuses admin.js's generic .ds-media-field. */
     private static function image_row( string $key, string $label, array $saved, array $defaults, string $help = '' ): void {
-        $id    = 'ew-wl-' . $key;
+        $id    = 'ds-wl-' . $key;
         $value = (string) ( $saved[ $key ] ?? '' );
         ?>
         <tr>
             <th scope="row"><?php echo esc_html( $label ); ?></th>
             <td>
-                <div class="ew-media-field">
+                <div class="ds-media-field">
                     <input type="hidden" id="<?php echo esc_attr( $id ); ?>" name="white_label[<?php echo esc_attr( $key ); ?>]" value="<?php echo esc_attr( $value ); ?>">
-                    <div class="ew-media-field__preview" <?php echo '' === $value ? 'style="display:none;"' : ''; ?>>
+                    <div class="ds-media-field__preview" <?php echo '' === $value ? 'style="display:none;"' : ''; ?>>
                         <?php if ( '' !== $value ) : ?>
                             <img src="<?php echo esc_url( $value ); ?>" alt="">
                         <?php endif; ?>
                     </div>
                     <p>
-                        <button type="button" class="button ew-media-field__select"><?php echo '' !== $value ? esc_html__( 'Change Image', 'encore-website' ) : esc_html__( 'Select Image', 'encore-website' ); ?></button>
-                        <button type="button" class="button ew-media-field__remove" <?php echo '' === $value ? 'style="display:none;"' : ''; ?>><?php esc_html_e( 'Remove', 'encore-website' ); ?></button>
+                        <button type="button" class="button ds-media-field__select"><?php echo '' !== $value ? esc_html__( 'Change Image', 'drift-surface' ) : esc_html__( 'Select Image', 'drift-surface' ); ?></button>
+                        <button type="button" class="button ds-media-field__remove" <?php echo '' === $value ? 'style="display:none;"' : ''; ?>><?php esc_html_e( 'Remove', 'drift-surface' ); ?></button>
                     </p>
                 </div>
                 <?php if ( $help ) : ?>
@@ -323,14 +323,14 @@ class Encore_Website_White_Label {
 
     /**
      * Saves the White Label tab — branding/login here, the menu settings via
-     * Encore_Website_Admin_Access::save_settings().
+     * Drift_Surface_Admin_Access::save_settings().
      */
     public static function handle_save(): void {
-        if ( ! current_user_can( 'manage_options' ) || ! Encore_Website_Admin_Access::can_manage() ) {
-            wp_die( esc_html__( 'You do not have permission to change these settings.', 'encore-website' ) );
+        if ( ! current_user_can( 'manage_options' ) || ! Drift_Surface_Admin_Access::can_manage() ) {
+            wp_die( esc_html__( 'You do not have permission to change these settings.', 'drift-surface' ) );
         }
 
-        check_admin_referer( 'encore_website_save_white_label', 'encore_website_white_label_nonce' );
+        check_admin_referer( 'drift_surface_save_white_label', 'drift_surface_white_label_nonce' );
 
         $input = wp_unslash( $_POST['white_label'] ?? [] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitised per field below.
         $input = is_array( $input ) ? $input : [];
@@ -364,9 +364,9 @@ class Encore_Website_White_Label {
         }
 
         update_option( self::OPTION, $out, false );
-        Encore_Website_Admin_Access::save_settings( wp_unslash( $_POST['admin_access'] ?? [] ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitised in save_settings().
+        Drift_Surface_Admin_Access::save_settings( wp_unslash( $_POST['admin_access'] ?? [] ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitised in save_settings().
 
-        wp_safe_redirect( Encore_Website_Admin_Page::tab_url( 'white-label', [ 'white_label_saved' => '1' ] ) );
+        wp_safe_redirect( Drift_Surface_Admin_Page::tab_url( 'white-label', [ 'white_label_saved' => '1' ] ) );
         exit;
     }
 
@@ -385,10 +385,10 @@ class Encore_Website_White_Label {
 
         if ( '' !== $s['admin_bar_logo'] ) {
             $bar->add_node( [
-                'id'    => 'ew-admin-logo',
+                'id'    => 'ds-admin-logo',
                 'title' => sprintf( '<img src="%s" alt="%s">', esc_url( $s['admin_bar_logo'] ), esc_attr( get_bloginfo( 'name' ) ) ),
                 'href'  => $s['admin_bar_logo_url'] ? esc_url( $s['admin_bar_logo_url'] ) : admin_url(),
-                'meta'  => [ 'class' => 'ew-admin-logo' ],
+                'meta'  => [ 'class' => 'ds-admin-logo' ],
             ] );
         }
     }
@@ -398,7 +398,7 @@ class Encore_Website_White_Label {
         if ( ! is_admin_bar_showing() || '' === self::settings()['admin_bar_logo'] ) {
             return;
         }
-        echo '<style id="ew-admin-logo-css">#wpadminbar .ew-admin-logo > .ab-item{display:flex;align-items:center;}#wpadminbar .ew-admin-logo img{display:block;height:20px;width:auto;max-width:160px;}</style>' . "\n";
+        echo '<style id="ds-admin-logo-css">#wpadminbar .ds-admin-logo > .ab-item{display:flex;align-items:center;}#wpadminbar .ds-admin-logo img{display:block;height:20px;width:auto;max-width:160px;}</style>' . "\n";
     }
 
     /** Admin footer credit, replacing "Thank you for creating with WordPress". */
@@ -430,17 +430,18 @@ class Encore_Website_White_Label {
     }
 
     /**
-     * Login screen CSS: the default Encore Website design (assets/login.css), then
+     * Login screen CSS: the default Drift: Surface design (assets/login.css), then
      * this site's White Label settings inline after it, so they win. Every
      * value is sanitised on save (hex colours, URLs, integers) and escaped
      * again here, so nothing raw reaches the stylesheet.
      */
     public static function login_styles(): void {
-        $handle = 'encore-website-login';
-        $file   = ENCORE_WEBSITE_DIR . 'assets/login.css';
+        $handle = 'drift-surface-login';
+        $file   = DRIFT_SURFACE_DIR . 'assets/login.css';
         // File modified time as the version, so edits aren't hidden by a
         // browser-cached copy under an unchanged plugin version.
-        wp_enqueue_style( $handle, ENCORE_WEBSITE_URL . 'assets/login.css', [ 'login' ], file_exists( $file ) ? (string) filemtime( $file ) : ENCORE_WEBSITE_VERSION );
+        Drift_Surface_Admin_Page::enqueue_fonts();
+        wp_enqueue_style( $handle, DRIFT_SURFACE_URL . 'assets/login.css', [ 'login', 'drift-surface-fonts' ], file_exists( $file ) ? (string) filemtime( $file ) : DRIFT_SURFACE_VERSION );
 
         $s   = self::settings();
         $css = '';

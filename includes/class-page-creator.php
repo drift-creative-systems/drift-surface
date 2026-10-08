@@ -4,7 +4,7 @@
  * product's standard pages with their page-builder rows pre-filled.
  *
  * The page list comes from the product map ('pages'), so the same wizard
- * sets up an Encore band site or any later product.
+ * sets up a Surface band site or any later product.
  *
  * Page definition (map 'pages' entries):
  *   id, title, slug ('' = front page), description, tags[], required (bool),
@@ -15,22 +15,22 @@
  * Use self::IMAGE_PLACEHOLDER as an image sub-field value to get the shared
  * placeholder image.
  *
- * @package Encore_Website
+ * @package Drift_Surface
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-final class Encore_Website_Page_Creator {
+final class Drift_Surface_Page_Creator {
 
-	const IMAGE_PLACEHOLDER = '__encore_placeholder_image__';
-	const PLACEHOLDER_META  = '_encore_placeholder';
-	const NONCE             = 'encore_setup_nonce';
+	const IMAGE_PLACEHOLDER = '__drift_surface_placeholder_image__';
+	const PLACEHOLDER_META  = '_drift_surface_placeholder';
+	const NONCE             = 'drift_surface_setup_nonce';
 	const MENU_NAME         = 'Main Menu';
 
 	public static function init(): void {
-		add_action( 'wp_ajax_encore_setup_create_page', [ __CLASS__, 'ajax_create_page' ] );
+		add_action( 'wp_ajax_drift_surface_setup_create_page', [ __CLASS__, 'ajax_create_page' ] );
 	}
 
 	/* ── Definitions ─────────────────────────────────────────────────── */
@@ -38,7 +38,7 @@ final class Encore_Website_Page_Creator {
 	/** @return array[] Every page definition in the active map. */
 	public static function definitions(): array {
 		$pages = [];
-		foreach ( (array) Encore_Website_Map::current()['pages'] as $page ) {
+		foreach ( (array) Drift_Surface_Map::current()['pages'] as $page ) {
 			if ( ! is_array( $page ) || empty( $page['id'] ) || empty( $page['title'] ) ) {
 				continue;
 			}
@@ -80,16 +80,16 @@ final class Encore_Website_Page_Creator {
 		check_ajax_referer( self::NONCE, 'nonce' );
 
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'encore-website' ) ], 403 );
+			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'drift-surface' ) ], 403 );
 		}
 
-		if ( ! Encore_Website_Theme_Check::satisfied() ) {
-			wp_send_json_error( [ 'message' => Encore_Website_Theme_Check::blocked_message() ], 409 );
+		if ( ! Drift_Surface_Theme_Check::satisfied() ) {
+			wp_send_json_error( [ 'message' => Drift_Surface_Theme_Check::blocked_message() ], 409 );
 		}
 
 		$page_id = sanitize_key( (string) wp_unslash( $_POST['page_id'] ?? '' ) );
 		if ( '' === $page_id ) {
-			wp_send_json_error( [ 'message' => __( 'Missing page.', 'encore-website' ) ], 400 );
+			wp_send_json_error( [ 'message' => __( 'Missing page.', 'drift-surface' ) ], 400 );
 		}
 
 		$result = self::create( $page_id );
@@ -136,7 +136,7 @@ final class Encore_Website_Page_Creator {
 		$def = self::get( $id );
 		if ( ! $def ) {
 			/* translators: %s: page id. */
-			return [ 'ok' => false, 'page_id' => null, 'message' => sprintf( __( 'Unknown page "%s".', 'encore-website' ), $id ) ];
+			return [ 'ok' => false, 'page_id' => null, 'message' => sprintf( __( 'Unknown page "%s".', 'drift-surface' ), $id ) ];
 		}
 
 		$existing = self::find_page( $def );
@@ -145,7 +145,7 @@ final class Encore_Website_Page_Creator {
 				'ok'      => true,
 				'page_id' => $existing->ID,
 				/* translators: 1: title, 2: post ID. */
-				'message' => sprintf( __( '"%1$s" already exists (ID %2$d) — skipped.', 'encore-website' ), $def['title'], $existing->ID ),
+				'message' => sprintf( __( '"%1$s" already exists (ID %2$d) — skipped.', 'drift-surface' ), $def['title'], $existing->ID ),
 				'skipped' => true,
 			];
 		}
@@ -166,7 +166,7 @@ final class Encore_Website_Page_Creator {
 			if ( $parent_page ) {
 				$postarr['post_parent'] = $parent_page->ID;
 			} else {
-				$note = ' ' . __( 'Its parent page doesn\'t exist yet, so it was created top-level.', 'encore-website' );
+				$note = ' ' . __( 'Its parent page doesn\'t exist yet, so it was created top-level.', 'drift-surface' );
 			}
 		}
 
@@ -198,7 +198,7 @@ final class Encore_Website_Page_Creator {
 
 			update_field( self::page_builder_key(), $rows, $post_id );
 		} elseif ( $def['rows'] ) {
-			$note .= ' ' . __( 'ACF Pro isn\'t active, so its modules weren\'t added.', 'encore-website' );
+			$note .= ' ' . __( 'ACF Pro isn\'t active, so its modules weren\'t added.', 'drift-surface' );
 		}
 
 		if ( '' === $def['slug'] ) {
@@ -216,7 +216,7 @@ final class Encore_Website_Page_Creator {
 			'ok'      => true,
 			'page_id' => (int) $post_id,
 			/* translators: 1: title, 2: ID. */
-			'message' => sprintf( __( '"%1$s" created (ID %2$d).', 'encore-website' ), $def['title'], $post_id ) . $note,
+			'message' => sprintf( __( '"%1$s" created (ID %2$d).', 'drift-surface' ), $def['title'], $post_id ) . $note,
 			'skipped' => false,
 		];
 	}
@@ -227,7 +227,7 @@ final class Encore_Website_Page_Creator {
 	 * ACF JSON supplies the key.
 	 */
 	private static function page_builder_key(): string {
-		$name = (string) Encore_Website_Map::current()['page_builder_field'];
+		$name = (string) Drift_Surface_Map::current()['page_builder_field'];
 		if ( 0 === strpos( $name, 'field_' ) || ! function_exists( 'acf_get_field' ) ) {
 			return $name;
 		}
@@ -347,7 +347,7 @@ final class Encore_Website_Page_Creator {
 		imagestring( $canvas, 5, (int) ( ( $w - imagefontwidth( 5 ) * strlen( $label ) ) / 2 ), (int) ( ( $h - imagefontheight( 5 ) ) / 2 ), $label, $fg );
 
 		$upload = wp_upload_dir();
-		$file   = trailingslashit( $upload['path'] ) . 'ew-placeholder.png';
+		$file   = trailingslashit( $upload['path'] ) . 'ds-placeholder.png';
 		imagepng( $canvas, $file );
 		imagedestroy( $canvas );
 
@@ -357,7 +357,7 @@ final class Encore_Website_Page_Creator {
 
 		require_once ABSPATH . 'wp-admin/includes/image.php';
 
-		$id = wp_insert_attachment( [ 'post_mime_type' => 'image/png', 'post_title' => 'Encore Website placeholder', 'post_status' => 'inherit' ], $file );
+		$id = wp_insert_attachment( [ 'post_mime_type' => 'image/png', 'post_title' => 'Drift: Surface placeholder', 'post_status' => 'inherit' ], $file );
 		if ( is_wp_error( $id ) || ! $id ) {
 			return 0;
 		}

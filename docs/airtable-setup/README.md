@@ -1,4 +1,4 @@
-# Setting up Airtable for Encore
+# Setting up Airtable for Surface
 
 Building the template takes about 30 minutes once. After that, each new band takes about 10 minutes.
 
@@ -13,34 +13,34 @@ You need Node 18 or newer on your machine (Claude Code already requires it). Che
 
 ### 1. Workspace and base
 
-- In Airtable, create a workspace called **Encore Website — Encore templates** (Free plan).
-- Inside it: **Create → Start from scratch**. Name the base **Encore — Template**.
+- In Airtable, create a workspace called **Drift: Surface — Surface templates** (Free plan).
+- Inside it: **Create → Start from scratch**. Name the base **Surface — Template**.
 - Copy the base ID from the address bar: `airtable.com/`**`appXXXXXXXXXXXXXX`**`/…`
 
 ### 2. Setup token (temporary)
 
 At **airtable.com/create/tokens → Create token**:
 
-- **Name:** `Encore setup — delete after`
+- **Name:** `Surface setup — delete after`
 - **Scopes:** `schema.bases:read`, `schema.bases:write`, `data.records:read`, `data.records:write`
-- **Access:** only the *Encore — Template* base
+- **Access:** only the *Surface — Template* base
 
 Copy the token. It's shown once.
 
 ### 3. Run the builder
 
-Open a terminal in this folder (`encore-website/docs/airtable-setup`) and run:
+Open a terminal in this folder (`drift-surface/docs/airtable-setup`) and run:
 
 ```bash
 # macOS / Linux / Git Bash
 export AIRTABLE_TOKEN="<your setup token>"
-node setup-encore-base.mjs --base appXXXXXXXXXXXXXX
+node setup-surface-base.mjs --base appXXXXXXXXXXXXXX
 ```
 
 ```powershell
 # Windows PowerShell
 $env:AIRTABLE_TOKEN = "<your setup token>"
-node setup-encore-base.mjs --base appXXXXXXXXXXXXXX
+node setup-surface-base.mjs --base appXXXXXXXXXXXXXX
 ```
 
 The token is read from `AIRTABLE_TOKEN` so it never lands in shell history or in docs. (`--token` still works, but avoid it.)
@@ -132,17 +132,17 @@ At **airtable.com/create/tokens**:
 
 ### 3. Connect WordPress
 
-On the band's site, with the Encore Website plugin and Encore theme active:
+On the band's site, with the Drift: Surface plugin and Encore theme active:
 
-1. Go to **Encore Website → Connection**. Paste the base ID and token, choose product *Encore*, and click **Save**.
+1. Go to **Drift: Surface → Connection**. Paste the base ID and token, choose product *Surface*, and click **Save**.
 2. Click **Check connection**. It should say every table and field is present.
-3. Go to **Encore Website → Sync → Sync now**. Content appears on the site. Images import in batches; the rest continue automatically a minute later.
-4. Run **Encore Website → Setup Wizard → Select all → Create**, if the pages don't exist yet.
+3. Go to **Drift: Surface → Sync → Sync now**. Content appears on the site. Images import in batches; the rest continue automatically a minute later.
+4. Run **Drift: Surface → Setup Wizard → Select all → Create**, if the pages don't exist yet.
 
 ### 4. Set up the Publish button
 
-1. On Encore Website → Connection, copy the **Publish link (Free plan)**.
-2. In the band's base, go to **Site Settings → Publish website** field → **Edit field**. Replace `"REPLACE_PER_SITE"` with the link, inside quotes: `"https://bandsite.co.uk/?encore_publish=…"`
+1. On Drift: Surface → Connection, copy the **Publish link (Free plan)**.
+2. In the band's base, go to **Site Settings → Publish website** field → **Edit field**. Replace `"REPLACE_PER_SITE"` with the link, inside quotes: `"https://bandsite.co.uk/?drift_surface_publish=…"`
 3. Test it: click the button. A new tab says "Your website is up to date" and lists what changed.
 
 The link contains the site's secret, so only share it inside the band's own base. If it ever leaks, use "Generate a new secret" on the Connection tab and update the button.
@@ -155,18 +155,18 @@ Share the base with the band as **Editor**, not Creator, so they can edit conten
 
 ## Part C: updating existing bases to the latest template
 
-When the master template changes (new fields, new tables), bring every band's base up to date with the script's **migrate** mode. It finds every Encore base your token can see, across all workspaces, and:
+When the master template changes (new fields, new tables), bring every band's base up to date with the script's **migrate** mode. It finds every Surface base your token can see, across all workspaces, and:
 
 - adds missing tables, fields and links
 - **never** deletes, renames or changes the type of anything
-- stamps the template version at the end of the **Site Settings** table description, e.g. `[Encore template v2]`
+- stamps the template version at the end of the **Site Settings** table description, e.g. `[Surface template v2]`
 - lists anything the API can't do, per base: formulas, missing select options, wrong field types, Created time and button fields, the Interface
 
 ### 1. Maintenance token (once)
 
 At **airtable.com/create/tokens → Create token**:
 
-- **Name:** `Encore Website maintenance`
+- **Name:** `Drift: Surface maintenance`
 - **Scopes:** `schema.bases:read`, `schema.bases:write`. No data scopes are needed.
 - **Access:** every client workspace, or "All current and future bases in all current and future workspaces"
 
@@ -179,30 +179,30 @@ From this folder:
 ```bash
 # macOS / Linux / Git Bash
 export AIRTABLE_TOKEN="<maintenance token>"
-node setup-encore-base.mjs --migrate --all
+node setup-surface-base.mjs --migrate --all
 ```
 
 ```powershell
 # Windows PowerShell
 $env:AIRTABLE_TOKEN = "<maintenance token>"
-node setup-encore-base.mjs --migrate --all
+node setup-surface-base.mjs --migrate --all
 ```
 
-Nothing changes. For each base it prints what it would add, the version it would move from and to, and a **To do by hand** list. Bases that aren't Encore bases (no Site Settings, Gigs and Releases tables) are ignored.
+Nothing changes. For each base it prints what it would add, the version it would move from and to, and a **To do by hand** list. Bases that aren't Surface bases (no Site Settings, Gigs and Releases tables) are ignored.
 
 To check only some bases, use `--bases appXXXX,appYYYY` (or `--base appXXXX`) instead of `--all`.
 
 ### 3. Apply
 
 ```bash
-node setup-encore-base.mjs --migrate --all --apply
+node setup-surface-base.mjs --migrate --all --apply
 ```
 
 Then work through each base's **To do by hand** list. Re-running is safe and costs 1 API call per base. It keeps listing hand jobs until they're done, but the Interface reminder only appears on the run that adds the fields, so note it down.
 
 ### 4. Then update the websites
 
-Release the plugin and theme update, then publish each site (or **Encore Website → Sync → Sync now**) and check **Encore Website → Connection → Check connection**.
+Release the plugin and theme update, then publish each site (or **Drift: Surface → Sync → Sync now**) and check **Drift: Surface → Connection → Check connection**.
 
 Since plugin 1.2.0 the order isn't critical: if a site updates before its base is migrated, it skips the missing fields, keeps their current values, and notes them in the sync log. The rest of the content still syncs.
 
@@ -212,7 +212,7 @@ A dry run costs 1 call per base the token can see, plus 1 to list them. Applying
 
 ### When you change the template (for Drift Creative Systems developers)
 
-1. Edit `SCHEMA` in `setup-encore-base.mjs`, and `maps/encore.php` and `docs/ENCORE-AIRTABLE-BASE.md` to match.
+1. Edit `SCHEMA` in `setup-surface-base.mjs`, and `maps/surface.php` and `docs/SURFACE-AIRTABLE-BASE.md` to match.
 2. Bump `TEMPLATE_VERSION` and add a line to the version history above it.
 3. If the API can't create the new thing (formula, button, Created time), add it to `FORMULAS` or `HAND_FIELDS` so the migrate checklist picks it up.
 4. Run the dry run, then `--apply`, then release the plugin.

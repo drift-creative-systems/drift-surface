@@ -3,38 +3,38 @@
  * class-crypto.php — encrypts secrets (Airtable token, publish secret) at
  * rest in wp_options.
  *
- * AES-256-GCM via OpenSSL. The key comes from ENCORE_WEBSITE_KEY if defined in
+ * AES-256-GCM via OpenSSL. The key comes from DRIFT_SURFACE_KEY if defined in
  * wp-config.php, otherwise from WordPress's own auth salts — so a database
  * dump on its own doesn't expose the token. Changing the salts (or the
  * constant) makes stored secrets unreadable; the Connection tab then simply
  * asks for the token again.
  *
  * Stored format: "dw1:" + base64( iv[12] . tag[16] . ciphertext ). The prefix
- * is kept from 1.x; values sealed under the 1.x key still unseal, and the
- * 2.0 migration re-seals them.
+ * is unchanged since 1.x. Values sealed under the 2.x (Encore Website) key
+ * still unseal, and the 3.0 migration re-seals them.
  *
- * @package Encore_Website
+ * @package Drift_Surface
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-final class Encore_Website_Crypto {
+final class Drift_Surface_Crypto {
 
 	const PREFIX = 'dw1:';
 
 	/**
-	 * @param bool $legacy The 1.x (Drift Website) key, only ever used to read
+	 * @param bool $legacy The 2.x (Encore Website) key, only ever used to read
 	 *                     secrets sealed before the rename.
 	 */
 	private static function key( bool $legacy = false ): string {
-		$material = encore_website_constant( 'KEY' );
+		$material = drift_surface_constant( 'KEY' );
 		if ( '' === $material ) {
 			$material = wp_salt( 'auth' ) . wp_salt( 'secure_auth' );
 		}
 
-		return hash( 'sha256', ( $legacy ? 'drift-website|' : 'encore-website|' ) . $material, true );
+		return hash( 'sha256', ( $legacy ? 'encore-website|' : 'drift-surface|' ) . $material, true );
 	}
 
 	public static function available(): bool {
@@ -83,7 +83,7 @@ final class Encore_Website_Crypto {
 	}
 
 	/**
-	 * Re-seals a value under the current key if it was sealed under the 1.x
+	 * Re-seals a value under the current key if it was sealed under the 2.x
 	 * key. Returns the input unchanged when it's empty or unreadable.
 	 */
 	public static function reseal( string $stored ): string {

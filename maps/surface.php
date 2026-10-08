@@ -1,26 +1,31 @@
 <?php
 /**
- * maps/encore.php — Encore (band & artist websites).
+ * maps/surface.php — Surface (band & artist websites).
  *
- * The contract between the Encore Airtable template base and the Encore
- * theme. Table and field names here must match the base exactly (the
- * Connection tab's "Check connection" compares them) — the full base spec,
- * field types included, is docs/ENCORE-AIRTABLE-BASE.md. Keep the two in step.
+ * The contract between the data source (a Drift: Surface Hub, or the Surface
+ * Airtable template base) and the Encore theme. Table and field names here
+ * must match the source exactly (the Connection tab's "Check connection"
+ * compares them). The full base spec, field types included, is
+ * docs/SURFACE-AIRTABLE-BASE.md, and the hub's is drift-hub/schemas/surface.php.
+ * Keep all three in step.
+ *
+ * Post types, taxonomies and the settings option keep their encore_* names:
+ * the Encore theme reads them directly.
  *
  * Map reference: docs/MAP-REFERENCE.md.
  *
- * @package Encore_Website
+ * @package Drift_Surface
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-$placeholder = Encore_Website_Page_Creator::IMAGE_PLACEHOLDER;
+$placeholder = Drift_Surface_Page_Creator::IMAGE_PLACEHOLDER;
 
 return [
-	'label'              => 'Encore',
-	'description'        => 'Band and artist websites — gigs, releases, members, media, press and merch, all managed in Airtable.',
+	'label'              => 'Surface',
+	'description'        => 'Band and artist websites — gigs, releases, members, media, press and merch, managed in a Drift: Surface Hub or Airtable.',
 	'page_builder_field' => 'page_builder',
 
 	/*
@@ -30,8 +35,8 @@ return [
 	'publish'            => [ 'field' => 'Last Published' ],
 
 	/*
-	 * The theme Encore renders with. Until it (or a child of it) is active,
-	 * Encore Website shows an install/activate notice and the Setup Wizard is off.
+	 * The theme Surface renders with. Until it (or a child of it) is active,
+	 * Drift: Surface shows an install/activate notice and the Setup Wizard is off.
 	 * The theme refuses to render without this plugin, so the two always
 	 * ship together.
 	 */
@@ -41,7 +46,7 @@ return [
 		'zip'  => 'https://github.com/drift-creative-systems/encore-theme/releases/latest/download/encore-theme.zip',
 	],
 
-	/* ── One-row table → encore_website_setting( key ) ───────────────────────── */
+	/* ── One-row table → drift_surface_setting( key ) ───────────────────────── */
 	'settings'           => [
 		'table'  => 'Site Settings',
 		'option' => 'encore_site_settings',

@@ -1,16 +1,16 @@
 <?php
 /**
  * class-forms.php — front-end forms (booking enquiries, newsletter) written
- * back to Airtable, the one place Encore Website writes rather than reads.
+ * back to Airtable, the one place Drift: Surface writes rather than reads.
  *
  * The theme renders the form markup and posts to admin-ajax.php with
- * action=encore_form, form=<form key from the map>, a nonce from
- * encore_form_nonce(), and the field names the map lists. This class
+ * action=drift_surface_form, form=<form key from the map>, a nonce (all three
+ * from drift_surface_form_hidden_fields()), and the field names the map lists. This class
  * validates, rate-limits, creates the Airtable record (1 API call) and
  * emails a copy to the address in the map's 'notify' setting — so an
  * enquiry is never lost if Airtable is unreachable or over its limit.
  *
- * Map shape (maps/encore.php → 'forms'):
+ * Map shape (maps/surface.php → 'forms'):
  *   'enquiry' => [
  *       'table'    => 'Enquiries',
  *       'fields'   => [ 'name' => 'Name', 'email' => 'Email', … ], // form key => Airtable field
@@ -20,46 +20,38 @@
  *       'subject'  => 'New enquiry from the website',
  *   ]
  *
- * @package Encore_Website
+ * @package Drift_Surface
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-final class Encore_Website_Forms {
+final class Drift_Surface_Forms {
 
-	const ACTION    = 'encore_form';
-	const HONEYPOT  = 'encore_hp';
+	const ACTION    = 'drift_surface_form';
+	const HONEYPOT  = 'drift_surface_hp';
 	const RATE_MAX  = 5;  // Submissions…
 	const RATE_SPAN = 600; // …per IP per 10 minutes.
 
-	// 1.x names. Pages cached before the rename still post these.
-	const LEGACY_ACTION   = 'drift_form';
-	const LEGACY_HONEYPOT = 'drift_hp';
-
 	public static function init(): void {
-		foreach ( [ self::ACTION, self::LEGACY_ACTION ] as $action ) {
-			add_action( 'wp_ajax_' . $action, [ __CLASS__, 'handle_ajax' ] );
-			add_action( 'wp_ajax_nopriv_' . $action, [ __CLASS__, 'handle_ajax' ] );
-		}
+		add_action( 'wp_ajax_' . self::ACTION, [ __CLASS__, 'handle_ajax' ] );
+		add_action( 'wp_ajax_nopriv_' . self::ACTION, [ __CLASS__, 'handle_ajax' ] );
 	}
 
 	public static function handle_ajax(): void {
-		// The nonce was made for whichever action name the page posted.
-		$action = self::LEGACY_ACTION === sanitize_key( wp_unslash( $_POST['action'] ?? '' ) ) ? self::LEGACY_ACTION : self::ACTION; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified on the next line.
-		check_ajax_referer( $action, 'nonce' );
+		check_ajax_referer( self::ACTION, 'nonce' );
 
 		$form = sanitize_key( (string) wp_unslash( $_POST['form'] ?? '' ) );
 		$data = wp_unslash( $_POST ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitised per field in submit().
 
 		// Honeypot: pretend it worked.
-		if ( ! empty( $data[ self::HONEYPOT ] ) || ! empty( $data[ self::LEGACY_HONEYPOT ] ) ) {
-			wp_send_json_success( [ 'message' => __( 'Thanks — we\'ll be in touch.', 'encore-website' ) ] );
+		if ( ! empty( $data[ self::HONEYPOT ] ) ) {
+			wp_send_json_success( [ 'message' => __( 'Thanks — we\'ll be in touch.', 'drift-surface' ) ] );
 		}
 
 		if ( ! self::rate_ok() ) {
-			wp_send_json_error( [ 'message' => __( 'Too many messages in a short time. Please try again in a few minutes.', 'encore-website' ) ], 429 );
+			wp_send_json_error( [ 'message' => __( 'Too many messages in a short time. Please try again in a few minutes.', 'drift-surface' ) ], 429 );
 		}
 
 		$result = self::submit( $form, is_array( $data ) ? $data : [] );
@@ -68,7 +60,7 @@ final class Encore_Website_Forms {
 			wp_send_json_error( [ 'message' => $result->get_error_message(), 'fields' => $result->get_error_data()['fields'] ?? [] ], 422 );
 		}
 
-		wp_send_json_success( [ 'message' => __( 'Thanks — we\'ll be in touch.', 'encore-website' ) ] );
+		wp_send_json_success( [ 'message' => __( 'Thanks — we\'ll be in touch.', 'drift-surface' ) ] );
 	}
 
 	/**
@@ -79,9 +71,9 @@ final class Encore_Website_Forms {
 	 * @return true|WP_Error
 	 */
 	public static function submit( string $form, array $data ) {
-		$spec = Encore_Website_Map::current()['forms'][ $form ] ?? null;
+		$spec = Drift_Surface_Map::current()['forms'][ $form ] ?? null;
 		if ( ! is_array( $spec ) || empty( $spec['table'] ) || empty( $spec['fields'] ) ) {
-			return new WP_Error( 'encore_form_unknown', __( 'This form isn\'t set up.', 'encore-website' ) );
+			return new WP_Error( 'drift_surface_form_unknown', __( 'This form isn\'t set up.', 'drift-surface' ) );
 		}
 
 		$values  = [];
@@ -108,7 +100,7 @@ final class Encore_Website_Forms {
 		}
 
 		if ( $invalid ) {
-			return new WP_Error( 'encore_form_invalid', __( 'Please check the highlighted fields.', 'encore-website' ), [ 'fields' => array_values( array_unique( $invalid ) ) ] );
+			return new WP_Error( 'drift_surface_form_invalid', __( 'Please check the highlighted fields.', 'drift-surface' ), [ 'fields' => array_values( array_unique( $invalid ) ) ] );
 		}
 
 		/**
@@ -118,16 +110,16 @@ final class Encore_Website_Forms {
 		 * @param string $form   Form key.
 		 * @param array  $data   Raw input.
 		 */
-		$values = (array) apply_filters( 'encore_website_form_values', $values, $form, $data );
+		$values = (array) apply_filters( 'drift_surface_form_values', $values, $form, $data );
 
-		$created = Encore_Website_Airtable::create_record( (string) $spec['table'], $values );
+		$created = Drift_Surface_Airtable::create_record( (string) $spec['table'], $values );
 		if ( is_wp_error( $created ) ) {
-			Encore_Website_Log::error( sprintf( 'Form "%s" could not be saved to Airtable — %s. Email copy sent instead.', $form, $created->get_error_message() ), 'forms' );
+			Drift_Surface_Log::error( sprintf( 'Form "%s" could not be saved to Airtable — %s. Email copy sent instead.', $form, $created->get_error_message() ), 'forms' );
 		}
 
 		self::notify( $spec, $values, is_wp_error( $created ) );
 
-		do_action( 'encore_website_form_submitted', $form, $values, $created );
+		do_action( 'drift_surface_form_submitted', $form, $values, $created );
 
 		return true;
 	}
@@ -138,7 +130,7 @@ final class Encore_Website_Forms {
 			return; // e.g. newsletter signups: Airtable is the record, no email needed.
 		}
 
-		$map      = Encore_Website_Map::current();
+		$map      = Drift_Surface_Map::current();
 		$settings = $map['settings'] ? get_option( $map['settings']['option'], [] ) : [];
 		$to       = '';
 
@@ -155,7 +147,7 @@ final class Encore_Website_Forms {
 		}
 		if ( $airtable_failed ) {
 			$lines[] = '';
-			$lines[] = __( '(This message could not be saved to Airtable — please add it by hand.)', 'encore-website' );
+			$lines[] = __( '(This message could not be saved to Airtable — please add it by hand.)', 'drift-surface' );
 		}
 
 		$headers = [];
@@ -168,7 +160,7 @@ final class Encore_Website_Forms {
 
 		wp_mail(
 			$to,
-			(string) ( $spec['subject'] ?? __( 'New message from the website', 'encore-website' ) ),
+			(string) ( $spec['subject'] ?? __( 'New message from the website', 'drift-surface' ) ),
 			implode( "\n", $lines ),
 			$headers
 		);
@@ -176,7 +168,7 @@ final class Encore_Website_Forms {
 
 	private static function rate_ok(): bool {
 		$ip  = sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ?? '' ) );
-		$key = 'encore_form_rate_' . md5( $ip );
+		$key = 'drift_surface_form_rate_' . md5( $ip );
 		$n   = (int) get_transient( $key );
 
 		if ( $n >= self::RATE_MAX ) {

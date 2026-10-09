@@ -4,7 +4,7 @@
  * Plugin URI:        https://github.com/drift-creative-systems/drift-surface
  * Update URI:        https://github.com/drift-creative-systems/drift-surface
  * Description:       Drift: Surface — the site engine for artist websites. Syncs content one way from a Drift: Surface Hub into WordPress via a product map, with a Publish webhook, white label, admin access control and the page setup wizard.
- * Version:           3.1.0
+ * Version:           3.1.1
  * Requires at least: 6.2
  * Requires PHP:      8.0
  * Author:            Drift Creative Systems
@@ -27,7 +27,7 @@ if ( defined( 'DRIFT_SURFACE_VERSION' ) ) {
 	return; // Already loaded (e.g. a second copy in another folder).
 }
 
-define( 'DRIFT_SURFACE_VERSION', '3.1.0' );
+define( 'DRIFT_SURFACE_VERSION', '3.1.1' );
 define( 'DRIFT_SURFACE_FILE', __FILE__ );
 define( 'DRIFT_SURFACE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'DRIFT_SURFACE_URL', plugin_dir_url( __FILE__ ) );

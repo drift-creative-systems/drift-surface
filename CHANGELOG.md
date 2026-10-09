@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [3.1.1] - 2026-10-09
+
+### Changed
+- Admin header brand now matches the Drift: Surface logo: a redrawn mark in Surface green (`--ds-surface: #22c55e`), **DRIFT:** with its colon at Poppins 600, and **SURFACE** in green beneath.
+
 ## [3.1.0] - 2026-10-08
 
 Needs Drift: Surface Hub 1.6.0 or later: the map now asks for the hub's new **Hero Video** and **General Email** fields.

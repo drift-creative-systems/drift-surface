@@ -15,6 +15,7 @@
 	--ds-accent: #ff4fa3;
 	--ds-accent-ink: #b0115d; /* Accent as text on white, about 6.6:1. */
 	--ds-accent-soft: #ffe3f1;
+	--ds-surface: #22c55e; /* Drift: Surface logo green. Used on the black header only (about 9.2:1). */
 	--ds-ok: #1d7a3a;
 	--ds-warn: #9a5b00;
 	--ds-bad: #c0262d;
@@ -46,10 +47,11 @@
 	color: var(--ds-paper);
 	border-radius: var(--ds-r);
 }
-.ds-head__brand { display: flex; align-items: center; gap: 12px; margin: 0; padding: 0; color: var(--ds-paper); }
-.ds-head__mark { width: 34px; height: auto; flex: none; color: var(--ds-paper); }
-.ds-head__name { display: grid; font: 500 20px/1 var(--ds-display); letter-spacing: .16em; }
-.ds-head__name small { margin-top: 4px; font: 400 10px var(--ds-text); letter-spacing: .32em; text-transform: uppercase; color: #9ea3aa; }
+/* Brand lockup, from the Drift: Surface logo: green mark, white DRIFT:, green SURFACE. */
+.ds-head__brand { display: flex; align-items: center; gap: 16px; margin: 0; padding: 0; color: var(--ds-paper); }
+.ds-head__mark { width: 40px; height: auto; flex: none; color: var(--ds-surface); }
+.ds-head__name { display: grid; font: 600 24px/1 var(--ds-display); letter-spacing: .2em; }
+.ds-head__name small { margin-top: 6px; font: 500 11px/1 var(--ds-display); letter-spacing: .3em; text-transform: uppercase; color: var(--ds-surface); }
 .ds-head__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; font-size: 13px; color: #c9ccd1; }
 .ds-head__product { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; background: var(--ds-accent); color: var(--ds-ink); font: 500 12px var(--ds-display); }
 .ds-head__source { display: inline-flex; align-items: center; gap: 6px; }

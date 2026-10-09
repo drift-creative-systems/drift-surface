@@ -163,11 +163,11 @@ final class Drift_Surface_Admin_Page {
 	}
 
 	/**
-	 * The Drift mark, as on the Drift: Surface Hub. Decorative: the name is
-	 * given in text beside it.
+	 * The Drift: Surface mark: a D whose stem breaks into two slashes.
+	 * Decorative: the name is given in text beside it.
 	 */
 	public static function mark( string $class = 'ds-head__mark' ): string {
-		return '<svg class="' . esc_attr( $class ) . '" viewBox="80 40 180 160" aria-hidden="true" focusable="false"><path fill="currentColor" d="M80 40H180C220 40 260 80 260 120C260 160 220 200 180 200H80L130 150H180C196 150 210 136 210 120C210 104 196 90 180 90H80V40Z"/><path fill="currentColor" d="M90 170L150 110H210L150 170H90Z"/></svg>';
+		return '<svg class="' . esc_attr( $class ) . '" viewBox="135 138 282 272" aria-hidden="true" focusable="false"><path fill="currentColor" d="M152 138H290A136 136 0 0 1 290 410H245L285 366H290A92 92 0 0 0 290 182H195V252H152Z"/><path fill="currentColor" d="M152 293H194L152 340Z"/><path fill="currentColor" d="M240 293H285L180 410H135Z"/></svg>';
 	}
 
 	public static function setup_notice(): void {
@@ -198,7 +198,7 @@ final class Drift_Surface_Admin_Page {
 			<header class="ds-head">
 				<h1 class="ds-head__brand">
 					<?php echo self::mark(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Static SVG. ?>
-					<span class="ds-head__name" aria-hidden="true">DRIFT<small>Surface</small></span>
+					<span class="ds-head__name" aria-hidden="true">DRIFT:<small>Surface</small></span>
 					<span class="screen-reader-text"><?php esc_html_e( 'Drift: Surface', 'drift-surface' ); ?></span>
 				</h1>
 				<div class="ds-head__meta">
